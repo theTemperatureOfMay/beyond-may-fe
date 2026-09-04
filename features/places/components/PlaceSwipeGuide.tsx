@@ -1,13 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
-import CircleIconButton from "@/components/ui/CircleIconButton";
-import ScrollIndicator from "@/components/ui/ScrollIndicator";
+import AppHeader from "@/components/layout/AppHeader";
+import Button from "@/components/ui/Button";
 import ArrowRight from "@/components/ui/icons/ArrowRight";
-import ChevronLeft from "@/components/ui/icons/ChevronLeft";
 import Close from "@/components/ui/icons/Close";
-import Hamburger from "@/components/ui/icons/Hamburger";
 import HeartFilled from "@/components/ui/icons/HeartFilled";
 
 interface PlaceSwipeGuideProps {
@@ -28,77 +24,70 @@ const PlaceSwipeGuide = ({
   onOpenMenu,
   onStart,
 }: PlaceSwipeGuideProps) => {
-  const router = useRouter();
-
   return (
     <div className="flex flex-1 flex-col">
-      <header className="text-neutral-04 flex items-center justify-between px-5 pt-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="뒤로 가기"
-          className="focus-visible:outline-neutral-07 cursor-pointer rounded-lg p-2 focus-visible:outline-2 focus-visible:outline-offset-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenMenu}
-          aria-label="메뉴 열기"
-          className="focus-visible:outline-neutral-07 cursor-pointer rounded-lg p-2 focus-visible:outline-2 focus-visible:outline-offset-2"
-        >
-          <Hamburger className="h-6 w-6" />
-        </button>
-      </header>
+      <AppHeader
+        backHref="/onboarding/result"
+        onOpenMenu={onOpenMenu}
+        centerLabel="장소 고르기"
+        className="-mx-6"
+      />
 
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <p className="text-neutral-07 text-[22px] leading-snug font-bold">
-          취향에 맞을 것 같은 장소
-          <br />
-          {placeCount}곳을 골라봤어요.
+        <p className="text-primary-08 text-[12px] font-semibold tracking-[0.12em]">
+          HOW IT WORKS
         </p>
+        <h1 className="text-neutral-07 mt-3 text-[28px] leading-[1.3] font-bold">
+          나에게 어울리는 장소
+          <br />
+          {placeCount}곳을 준비했어요
+        </h1>
 
         <div className="mt-10 flex items-center gap-6">
           <ArrowRight className="text-neutral-04 h-5 w-5 rotate-180 opacity-50" />
 
           <div className="relative h-28 w-22.5">
             <div className="bg-neutral-07/20 absolute inset-0 -translate-x-1.5 translate-y-1 rounded-2xl" />
-            <div className="animate-card-sway border-neutral-07 bg-neutral-01 absolute inset-0 rounded-2xl border-2" />
+            <div className="border-neutral-07 motion-safe:animate-card-sway absolute inset-0 rounded-2xl border-2 bg-white" />
           </div>
 
           <ArrowRight className="text-neutral-07 h-5 w-5" />
         </div>
 
-        <p className="text-neutral-06 mt-8 text-[15px] leading-relaxed">
-          스와이프 해서 좋고 싫음을 알려주시면,
+        <p className="text-neutral-04 mt-8 text-[15px] leading-[1.6]">
+          가고 싶은 장소는 오른쪽으로 담고,
           <br />
-          좋아하는 곳을 지도에 담아드려요.
+          나중에 볼 장소는 왼쪽으로 넘겨요.
         </p>
 
-        <div className="mt-8 flex items-center gap-6">
-          <CircleIconButton
-            icon={<Close className="h-6 w-6" />}
-            aria-label="싫어요"
-            className="h-15 w-15"
-          />
-          <CircleIconButton
-            icon={<HeartFilled className="h-6 w-6" />}
-            variant="dark"
-            aria-label="좋아요"
-            className="h-18 w-18"
-          />
+        <div className="mt-8 flex items-center gap-8" aria-hidden="true">
+          <div className="flex flex-col items-center gap-2">
+            <span className="border-neutral-03 flex h-12 w-12 items-center justify-center rounded-full border bg-white">
+              <Close className="h-5 w-5" />
+            </span>
+            <span className="text-neutral-04 text-[12px] font-medium">
+              넘기기
+            </span>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <span className="bg-neutral-07 text-neutral-01 flex h-12 w-12 items-center justify-center rounded-full">
+              <HeartFilled className="h-5 w-5" />
+            </span>
+            <span className="text-neutral-07 text-[12px] font-medium">
+              담기
+            </span>
+          </div>
         </div>
       </div>
 
-      <button
-        type="button"
+      <Button
+        variant="solid"
+        size="lg"
         onClick={onStart}
-        aria-label="장소 카드덱 보기"
-        className="mb-10 flex cursor-pointer justify-center"
+        className="mb-[max(24px,env(safe-area-inset-bottom))] w-full"
       >
-        <ScrollIndicator label="TAB" />
-      </button>
+        장소 고르기 시작
+      </Button>
     </div>
   );
 };

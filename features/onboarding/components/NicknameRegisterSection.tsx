@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -26,15 +26,16 @@ const NicknameRegisterSection = () => {
   const {
     register,
     handleSubmit,
-    watch,
-    formState: { isValid },
+    control,
+    formState: { errors, isValid },
   } = useForm<NicknameFormValues>({
     resolver: zodResolver(nicknameSchema),
     mode: "onChange",
     defaultValues: { nickname: "" },
   });
-  const nickname = watch("nickname");
-  const { mutate, data, isPending, isSuccess } = usePostSignupMutation();
+  const nickname = useWatch({ control, name: "nickname" });
+  const { mutate, data, isPending, isSuccess, isError } =
+    usePostSignupMutation();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const onSubmit = (values: NicknameFormValues) => {
@@ -47,49 +48,70 @@ const NicknameRegisterSection = () => {
   };
 
   return (
-    <section className="mt-16 px-6">
-      <h2 className="text-neutral-07 text-[18px] font-semibold">
-        여행 시작하기
-      </h2>
-      <p className="text-neutral-04 mt-1 text-[13px]">
-        중복 확인 없이 바로 시작해요. 실명이나 개인정보 대신 자유롭게 닉네임을
-        지어주세요.
-      </p>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-5">
-        <label
-          htmlFor="result-nickname"
-          className="text-neutral-04 text-[13px]"
-        >
-          닉네임
-        </label>
-        <div className="border-neutral-07 mt-1.5 flex items-center rounded-lg border px-3.5 py-3">
-          <input
-            id="result-nickname"
-            type="text"
-            placeholder="닉네임을 입력해주세요."
-            maxLength={10}
-            className="placeholder:text-neutral-04 flex-1 text-[15px] outline-none"
-            {...register("nickname")}
-          />
-          <span className="text-neutral-04 shrink-0 text-[13px]">
-            {nickname?.length ?? 0} / 10
-          </span>
-        </div>
-        <p className="text-neutral-04 mt-1.5 text-[12px]">
-          닉네임은 바꿀 수 없습니다.
+    <section className="mt-8 px-6">
+      <div className="border-neutral-03 rounded-[20px] border bg-white p-5">
+        <p className="text-primary-08 text-[12px] font-semibold tracking-[0.12em]">
+          NEXT STEP
+        </p>
+        <h2 className="text-neutral-07 mt-2 text-[20px] font-semibold">
+          여행에서 사용할 이름을 정해요
+        </h2>
+        <p className="text-neutral-04 mt-2 text-[13px] leading-[1.5]">
+          개인정보 대신 10자 이내의 닉네임을 입력해 주세요.
         </p>
 
-        <Button
-          type="submit"
-          variant="solid"
-          size="lg"
-          disabled={!isValid || isPending || isSuccess}
-          className="mt-4 w-full"
-        >
-          시작하기
-        </Button>
-      </form>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-5">
+          <label
+            htmlFor="result-nickname"
+            className="text-neutral-07 text-[13px] font-medium"
+          >
+            닉네임
+          </label>
+          <div className="border-neutral-03 bg-neutral-01 focus-within:border-primary-03 focus-within:ring-primary-03 mt-2 flex h-12 items-center rounded-xl border px-4 focus-within:ring-1">
+            <input
+              id="result-nickname"
+              type="text"
+              placeholder="예: 오월산책자"
+              maxLength={10}
+              aria-invalid={errors.nickname ? "true" : "false"}
+              aria-describedby="result-nickname-help"
+              className="placeholder:text-neutral-04 min-w-0 flex-1 bg-transparent text-[15px] outline-none"
+              {...register("nickname")}
+            />
+            <span className="text-neutral-04 shrink-0 text-[13px]">
+              {nickname?.length ?? 0} / 10
+            </span>
+          </div>
+          <p
+            id="result-nickname-help"
+            className={
+              errors.nickname
+                ? "text-caution-02 mt-2 text-[12px]"
+                : "text-neutral-04 mt-2 text-[12px]"
+            }
+          >
+            {errors.nickname
+              ? "닉네임을 한 글자 이상 입력해 주세요."
+              : "등록 후에는 닉네임을 바꿀 수 없어요."}
+          </p>
+
+          <Button
+            type="submit"
+            variant="solid"
+            size="lg"
+            disabled={!isValid || isPending || isSuccess}
+            isLoading={isPending}
+            className="mt-4 w-full"
+          >
+            이 이름으로 여행 시작하기
+          </Button>
+          {isError && (
+            <p className="text-caution-02 mt-3 text-center text-[12px]" role="alert">
+              세션을 만들지 못했어요. 입력한 닉네임은 유지했으니 다시 시도해 주세요.
+            </p>
+          )}
+        </form>
+      </div>
 
       {data && (
         <IdentificationCodeModal

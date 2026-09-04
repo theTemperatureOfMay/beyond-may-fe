@@ -10,16 +10,20 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   /** 텍스트 앞에 놓일 아이콘 */
   icon?: ReactNode;
+  /** 라벨은 유지한 채 중복 제출을 막고 진행 상태를 표시한다. */
+  isLoading?: boolean;
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  outline: "border-neutral-07 text-neutral-07 border",
-  solid: "bg-neutral-07 text-neutral-01",
+  outline:
+    "border-neutral-07 bg-transparent text-neutral-07 border hover:bg-neutral-02 active:bg-neutral-03 disabled:border-neutral-03 disabled:bg-transparent disabled:text-neutral-04",
+  solid:
+    "bg-neutral-07 text-neutral-01 hover:bg-neutral-06 active:bg-neutral-06 disabled:bg-neutral-03 disabled:text-neutral-04",
 };
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
-  lg: "py-3.5 text-[15px]",
-  md: "py-3 text-[14px]",
+  lg: "min-h-12 px-5 text-[15px]",
+  md: "min-h-11 px-4 text-[14px]",
 };
 
 /**
@@ -30,23 +34,34 @@ const Button = ({
   variant = "outline",
   size = "md",
   icon,
+  isLoading = false,
   className,
   children,
   type = "button",
+  disabled,
   ...rest
 }: ButtonProps) => (
   <button
     type={type}
+    disabled={disabled || isLoading}
+    aria-busy={isLoading || undefined}
     className={cn(
-      "flex cursor-pointer items-center justify-center gap-2 rounded-full font-medium disabled:cursor-not-allowed disabled:opacity-50",
+      "focus-visible:outline-primary-03 flex cursor-pointer items-center justify-center gap-2 rounded-full leading-none font-medium transition-[background-color,border-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100",
       VARIANT_CLASS[variant],
       SIZE_CLASS[size],
       className,
     )}
     {...rest}
   >
-    {icon}
-    {children}
+    {isLoading ? (
+      <span
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+      />
+    ) : (
+      icon
+    )}
+    <span>{children}</span>
   </button>
 );
 

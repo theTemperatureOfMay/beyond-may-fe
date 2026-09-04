@@ -108,17 +108,34 @@ const KakaoMap = ({
   // 클러스터 대상은 미방문(물방울)만. 깃발·방문완료는 묶지 않고 항상 단독 렌더.
   // (훅이므로 early return보다 위에서 호출해야 한다)
   const clusterableMarkers = markers.filter(
-    (marker) => !marker.visited && !marker.isCurrent,
+    (marker) =>
+      marker.variant !== "member" && !marker.visited && !marker.isCurrent,
   );
   const { clusters, offsetGroups, singles } = useMarkerCluster(
     map,
     clusterableMarkers,
   );
 
-  if (error)
-    return <div className="p-4 text-red-500">지도를 불러오지 못했어요.</div>;
-  if (loading)
-    return <div className="p-4 text-gray-500">지도 불러오는 중…</div>;
+  if (error) {
+    return (
+      <div
+        className="bg-neutral-02 text-neutral-05 flex h-full min-h-64 items-center justify-center px-6 text-center text-[14px]"
+        role="alert"
+      >
+        지도를 불러오지 못했어요.
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div
+        className="bg-neutral-02 text-neutral-04 flex h-full min-h-64 animate-pulse items-center justify-center px-6 text-center text-[14px]"
+        role="status"
+      >
+        지도를 불러오고 있어요.
+      </div>
+    );
+  }
 
   const hasRoute = route !== undefined && route.length >= 2;
 
@@ -127,7 +144,8 @@ const KakaoMap = ({
 
   // 깃발·방문완료는 클러스터 대상이 아니라 항상 개별 렌더
   const fixedMarkers = markers.filter(
-    (marker) => marker.visited || marker.isCurrent,
+    (marker) =>
+      marker.variant === "member" || marker.visited || marker.isCurrent,
   );
 
   // 클러스터 클릭 → 해당 위치로 확대해 개별 핀으로 펼친다
@@ -141,6 +159,33 @@ const KakaoMap = ({
 
   // 개별 마커 하나를 그리는 헬퍼 (offset 밀기 값 dx/dy를 받을 수 있다)
   const renderMarker = (marker: MapMarker, dx = 0, dy = 0) => {
+    if (marker.variant === "member") {
+      const displayName = marker.label ?? "팀원";
+
+      return (
+        <CustomOverlayMap
+          key={marker.id}
+          position={marker.position}
+          xAnchor={0.5}
+          yAnchor={1}
+          zIndex={Z_INDEX_PIN_CURRENT}
+        >
+          <div
+            role="img"
+            aria-label={`${displayName} 팀원 위치`}
+            className="flex flex-col items-center"
+          >
+            <span className="border-primary-08 bg-neutral-07 flex h-9 w-9 items-center justify-center rounded-full border-2 text-[13px] font-bold text-white shadow-[0_2px_8px_rgba(0,0,0,0.28)]">
+              {displayName.charAt(0)}
+            </span>
+            <span className="text-neutral-07 mt-1 max-w-24 truncate rounded-full bg-white px-2 py-1 text-[10px] font-semibold shadow-sm">
+              {displayName}
+            </span>
+          </div>
+        </CustomOverlayMap>
+      );
+    }
+
     const color = marker.category
       ? CATEGORY_COLORS[marker.category]
       : DEFAULT_COLOR;
@@ -149,6 +194,30 @@ const KakaoMap = ({
       : marker.isCurrent
         ? "current"
         : "default";
+    const offsetStyle =
+      dx || dy ? { transform: `translate(${dx}px, ${dy}px)` } : undefined;
+    const markerContent = (
+      <>
+        {/* 방문 완료 glow — 핀과 같은 컨테이너에 두어 항상 정확히 붙는다 */}
+        {glow && marker.visited && (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: glowSize,
+              height: glowSize,
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, rgba(${color}, ${GLOW_OPACITY_INNER}) 0%, rgba(${color}, ${GLOW_OPACITY_MID}) 40%, rgba(${color}, 0) 70%)`,
+              pointerEvents: "none",
+              zIndex: -1,
+            }}
+          />
+        )}
+        <MapPin order={marker.order} color={color} state={state} />
+      </>
+    );
 
     return (
       <CustomOverlayMap
@@ -158,32 +227,33 @@ const KakaoMap = ({
         yAnchor={state === "current" ? 1 : 0.9}
         zIndex={state === "current" ? Z_INDEX_PIN_CURRENT : Z_INDEX_PIN}
       >
-        <div
-          className="relative flex cursor-pointer items-center justify-center p-1"
-          style={
-            dx || dy ? { transform: `translate(${dx}px, ${dy}px)` } : undefined
-          }
-          onClick={() => onMarkerClick?.(marker.id)}
-        >
-          {/* 방문 완료 glow — 핀과 같은 컨테이너에 두어 항상 정확히 붙는다 */}
-          {glow && marker.visited && (
-            <div
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: "50%",
-                width: glowSize,
-                height: glowSize,
-                transform: "translate(-50%, -50%)",
-                borderRadius: "50%",
-                background: `radial-gradient(circle, rgba(${color}, ${GLOW_OPACITY_INNER}) 0%, rgba(${color}, ${GLOW_OPACITY_MID}) 40%, rgba(${color}, 0) 70%)`,
-                pointerEvents: "none",
-                zIndex: -1,
-              }}
-            />
-          )}
-          <MapPin order={marker.order} color={color} state={state} />
-        </div>
+        {onMarkerClick ? (
+          <button
+            type="button"
+            className="focus-visible:outline-primary-03 relative flex min-h-11 min-w-11 items-center justify-center rounded-full p-1 focus-visible:outline-2 focus-visible:outline-offset-2"
+            style={offsetStyle}
+            onClick={() => onMarkerClick(marker.id)}
+            aria-label={
+              marker.label
+                ? `${marker.label} 상세 보기`
+                : marker.isCurrent
+                  ? "다음 방문 장소"
+                  : marker.visited
+                    ? `방문 완료 장소${marker.order ? ` ${marker.order}` : ""}`
+                    : `코스 장소${marker.order ? ` ${marker.order}` : ""}`
+            }
+          >
+            {markerContent}
+          </button>
+        ) : (
+          <div
+            aria-hidden="true"
+            className="relative flex min-h-11 min-w-11 items-center justify-center p-1"
+            style={offsetStyle}
+          >
+            {markerContent}
+          </div>
+        )}
       </CustomOverlayMap>
     );
   };

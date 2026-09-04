@@ -10,7 +10,7 @@ interface SidebarCodeAccordionProps {
 }
 
 const MENU_ITEM_CLASS =
-  "border-neutral-02 flex w-full cursor-pointer items-center justify-between border-b py-4 text-[15px]";
+  "flex min-h-14 w-full cursor-pointer items-center justify-between border-b border-neutral-02 py-4 text-[15px] font-medium text-neutral-07 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-03";
 
 /**
  * "식별코드 보기" 아코디언. 접힌 상태는 다른 메뉴 항목과 같은 chevron 행,
@@ -18,9 +18,17 @@ const MENU_ITEM_CLASS =
  */
 const SidebarCodeAccordion = ({ code }: SidebarCodeAccordionProps) => {
   const [open, setOpen] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">(
+    "idle",
+  );
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
   };
 
   if (!open) {
@@ -28,6 +36,7 @@ const SidebarCodeAccordion = ({ code }: SidebarCodeAccordionProps) => {
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-expanded="false"
         className={MENU_ITEM_CLASS}
       >
         식별코드 보기
@@ -40,8 +49,12 @@ const SidebarCodeAccordion = ({ code }: SidebarCodeAccordionProps) => {
     <div className="border-neutral-02 border-b py-4">
       <button
         type="button"
-        onClick={() => setOpen(false)}
-        className="flex w-full cursor-pointer items-center justify-between"
+        onClick={() => {
+          setOpen(false);
+          setCopyStatus("idle");
+        }}
+        aria-expanded="true"
+        className="focus-visible:outline-primary-03 flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         <span className="text-neutral-04 text-[13px]">식별코드</span>
         <span className="text-neutral-04 flex items-center gap-1 text-[13px]">
@@ -50,16 +63,26 @@ const SidebarCodeAccordion = ({ code }: SidebarCodeAccordionProps) => {
         </span>
       </button>
 
-      <div className="border-neutral-07 mt-2 flex items-center justify-between rounded-lg border px-3.5 py-3">
+      <div className="border-neutral-03 bg-neutral-01 mt-2 flex min-h-12 items-center justify-between rounded-xl border px-4">
         <span className="text-neutral-07 text-[15px] font-medium">{code}</span>
         <button
           type="button"
           onClick={handleCopy}
-          className="text-neutral-04 cursor-pointer text-[13px]"
+          aria-live="polite"
+          className="text-neutral-05 focus-visible:outline-primary-03 min-h-11 cursor-pointer rounded-lg px-2 text-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
         >
-          복사
+          {copyStatus === "copied"
+            ? "복사됨"
+            : copyStatus === "error"
+              ? "다시 복사"
+              : "복사"}
         </button>
       </div>
+      {copyStatus === "error" && (
+        <p className="text-caution-02 mt-2 text-[12px]" role="alert">
+          복사하지 못했어요. 코드를 직접 선택해 주세요.
+        </p>
+      )}
     </div>
   );
 };

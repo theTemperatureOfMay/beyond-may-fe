@@ -10,8 +10,10 @@ export const API_ENDPOINTS = {
     search: "/api/v1/places/search",
   },
   course: {
+    list: "/api/v1/courses",
     detail: (courseId: string) => `/api/v1/courses/${courseId}`,
     confirm: (courseId: string) => `/api/v1/courses/${courseId}/confirm`,
+    refine: (courseId: string) => `/api/v1/courses/${courseId}/ai-refine`,
     aiGeneration: "/api/v1/courses/ai-generation",
   },
   preference: {

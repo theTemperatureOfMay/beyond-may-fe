@@ -25,54 +25,56 @@ const ResultTypeCard = ({ result }: ResultTypeCardProps) => {
   const stampDate = format(new Date(), "yyyy.MM.dd");
 
   return (
-    <section className="px-6 pt-3">
-      <div className="flex items-end gap-4">
-        {/* 우표형 일러스트 (살짝 기울임). 배경이 흰 페이지라 유형색으로 톱니를 보이게 한다. */}
-        <div className="relative aspect-3/4 w-[46%] shrink-0">
-          <StampPhoto
-            src={mbtiImg}
-            alt={mbtiName}
-            className="-rotate-2"
-            paperColor={theme.accent}
-            notchRadius={8}
-          />
+    <section className="px-6 pt-4">
+      <div className="border-neutral-03 relative overflow-hidden rounded-[40px] border bg-white p-6">
+        <p className="text-primary-08 text-[12px] font-semibold tracking-[0.14em]">
+          YOUR TRAVEL TYPE
+        </p>
 
-          {/* 원형 도장 (우표 우상단에 걸침) */}
-          <div className="border-neutral-07 bg-neutral-02 absolute -top-4 -right-6 flex h-14 w-14 -rotate-13 flex-col items-center justify-center rounded-full border-2">
-            <span className="text-neutral-07 text-[10px] leading-none font-bold">
-              光州
-            </span>
-            <span className="text-neutral-05 mt-0.5 text-[7px] leading-none font-normal">
-              {stampDate}
-            </span>
+        <div className="mt-5 flex items-end gap-4">
+          {/* 우표형 일러스트 (살짝 기울임). 배경이 흰 페이지라 유형색으로 톱니를 보이게 한다. */}
+          <div className="relative aspect-3/4 w-[43%] shrink-0">
+            <StampPhoto
+              src={mbtiImg}
+              alt={mbtiName}
+              className="-rotate-2"
+              paperColor={theme.accent}
+              notchRadius={8}
+            />
+
+            <div className="border-neutral-07 bg-neutral-01 absolute -top-4 -right-6 flex h-14 w-14 -rotate-12 flex-col items-center justify-center rounded-full border-2">
+              <span className="text-neutral-07 text-[10px] leading-none font-bold">
+                光州
+              </span>
+              <span className="text-neutral-04 mt-0.5 text-[7px] leading-none">
+                {stampDate}
+              </span>
+            </div>
+          </div>
+
+          <div className="pb-2 text-left">
+            <p className="text-neutral-04 text-[16px] font-medium">나는</p>
+            <h1 className="text-neutral-07 mt-1 text-[40px] leading-[1.2] font-bold tracking-[-0.02em]">
+              {mbtiName}
+            </h1>
           </div>
         </div>
 
-        {/* 유형명 */}
-        <div className="pb-2 text-left">
-          <p className="text-neutral-07 text-[20px] font-medium">나는</p>
-          <h1 className="text-neutral-07 text-[40px] leading-tight font-bold">
-            {mbtiName}
-          </h1>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {mbtiTag.map((tag) => (
+            <span
+              key={tag}
+              className="border-neutral-07 text-neutral-07 rounded-full border px-3 py-1.5 text-[13px] font-medium"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
-      </div>
 
-      {/* 키워드 칩 */}
-      <div className="mt-5 flex flex-wrap gap-2.5">
-        {mbtiTag.map((tag) => (
-          <span
-            key={tag}
-            className="border-neutral-07 text-neutral-07 rounded-3xl border px-4 py-1.5 text-[13px] font-medium"
-          >
-            {tag}
-          </span>
-        ))}
+        <p className="text-neutral-07 mt-4 text-[15px] leading-[1.55]">
+          {mbtiDescription}
+        </p>
       </div>
-
-      {/* 설명 */}
-      <p className="text-neutral-07 mt-4 text-[14px] leading-relaxed">
-        {mbtiDescription}
-      </p>
     </section>
   );
 };

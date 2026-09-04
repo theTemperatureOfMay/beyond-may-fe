@@ -9,7 +9,7 @@
   --color-neutral-01: #fdfff9;
   --color-neutral-02: #ededed;
   --color-neutral-03: #dddddd;
-  --color-neutral-04: #77797e;
+  --color-neutral-04: #60646a;
   --color-neutral-05: #bec2c0;
   --color-neutral-06: #312f2d;
   --color-neutral-07: #141414;
@@ -71,7 +71,7 @@
 
   /* ── Caution ── */
   --color-caution-01: #ffebe8;
-  --color-caution-02: #c53637;
+  --color-caution-02: #b3262e;
 
   /* ── 폰트 ── */
   --font-sans: var(--font-pretendard), system-ui, sans-serif;
@@ -81,6 +81,31 @@
   --animate-hint-bounce: hint-bounce 1.8s ease-in-out infinite;
   --animate-location-pulse: location-pulse 1.8s ease-out infinite;
   --animate-card-sway: card-sway 1.4s ease-in-out infinite;
+}
+
+@layer base {
+  html,
+  body {
+    min-height: 100%;
+    background: var(--color-neutral-02);
+  }
+
+  body {
+    color: var(--color-neutral-07);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary-03);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-primary-04);
+    color: var(--color-neutral-07);
+  }
 }
 
 @keyframes float {

@@ -17,6 +17,8 @@ export interface MapMarker {
   // TODO(백엔드 확인): 4유형 값 형식 제안함, 확정되면 조정
   category?: PlaceCategory; // 핀·glow 색상 결정
   isCurrent?: boolean; // 다음 목적지 (프론트에서 order·visited로 계산)
+  /** 팀원 위치 마커. 생략하면 기존 장소 핀으로 렌더한다. */
+  variant?: "place" | "member";
 }
 
 /* <Map> 컴포넌트가 받는 props */

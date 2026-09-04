@@ -63,6 +63,7 @@ const GradientBackground = ({
   const rayY = useTransform(scroll, [0, 0.5, 1], RAY_Y);
   const sunCy = useTransform(scroll, [0, 0.5, 1], SUN.cy);
   const sunOpacity = useTransform(scroll, [0, 0.7, 1], SUN_OPACITY);
+  const finalFrameOpacity = useTransform(scroll, [0.5, 1], [0, 1]);
 
   const showStatic = prefersReducedMotion || !progress;
 
@@ -78,6 +79,13 @@ const GradientBackground = ({
           <stop offset="0" stopColor="white" stopOpacity="0" />
           <stop offset="0.54" stopColor="white" stopOpacity="0.54" />
           <stop offset="1" stopColor="var(--color-primary-01)" />
+        </linearGradient>
+        <linearGradient id="hero-finish" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#BFBAFF" />
+          <stop offset="0.29" stopColor="#EFEBFC" />
+          <stop offset="0.5" stopColor="#FCE9E3" />
+          <stop offset="0.81" stopColor="#F9D4C9" />
+          <stop offset="1" stopColor="#FFFCFC" />
         </linearGradient>
       </defs>
 
@@ -159,6 +167,15 @@ const GradientBackground = ({
           r={SUN.r}
           fill="var(--color-primary-08)"
           style={{ opacity: sunOpacity }}
+        />
+      )}
+
+      {!showStatic && (
+        <motion.rect
+          width={VIEW_WIDTH}
+          height={VIEW_HEIGHT}
+          fill="url(#hero-finish)"
+          style={{ opacity: finalFrameOpacity }}
         />
       )}
     </svg>

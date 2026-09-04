@@ -12,21 +12,23 @@ const CLUSTER_COLOR = "40, 40, 40"; // 차콜 (유형색 안 섞음)
  */
 const ClusterMarker = ({ count, onClick }: ClusterMarkerProps) => {
   // 묶인 개수가 많을수록 살짝 크게 (시각적 밀도 표현)
-  const size = count >= 10 ? 44 : count >= 5 ? 40 : 36;
+  const visualSize = count >= 10 ? 44 : count >= 5 ? 40 : 36;
 
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={`장소 ${count}곳 모음`}
-      className="flex items-center justify-center rounded-full font-bold text-white"
+      className="focus-visible:outline-primary-03 flex h-11 w-11 items-center justify-center rounded-full font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2"
       style={{
-        width: size,
-        height: size,
+        width: visualSize,
+        height: visualSize,
+        minWidth: 44,
+        minHeight: 44,
         backgroundColor: `rgba(${CLUSTER_COLOR}, 0.92)`,
         border: "2px solid white",
         boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
-        fontSize: size * 0.36,
+        fontSize: visualSize * 0.36,
       }}
     >
       {count}

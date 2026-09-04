@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
+import useDialogFocus from "@/hooks/useDialogFocus";
 import Button from "@/components/ui/Button";
 import Close from "@/components/ui/icons/Close";
 import Download from "@/components/ui/icons/Download";
@@ -52,12 +53,14 @@ const ShareSheet = ({
   children,
   className,
 }: ShareSheetProps) => {
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, onClose);
+
   return (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           <motion.div
-            className="absolute inset-0 bg-black/50"
+            className="bg-neutral-07/50 absolute inset-0 backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -66,27 +69,29 @@ const ShareSheet = ({
           />
 
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="이미지 공유"
+            tabIndex={-1}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "tween", duration: 0.25 }}
             className={cn(
-              "bg-neutral-01 relative w-full max-w-[430px] rounded-t-3xl px-5 pt-4 pb-8",
+              "relative w-full max-w-[430px] rounded-t-[24px] bg-white px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(20,20,20,0.16)] focus:outline-none",
               className,
             )}
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-neutral-07 text-[16px] font-semibold">
+            <div className="flex min-h-11 items-center justify-between">
+              <h2 className="text-neutral-07 text-[18px] font-semibold">
                 결과 이미지 공유
               </h2>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="닫기"
-                className="text-neutral-05 p-1"
+                className="text-neutral-05 hover:bg-neutral-02 focus-visible:outline-primary-03 active:bg-neutral-03 flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
               >
                 <Close className="h-5 w-5" />
               </button>
@@ -108,7 +113,7 @@ const ShareSheet = ({
                       aria-selected={isSelected}
                       onClick={() => onSelectVersion(version.id)}
                       className={cn(
-                        "flex-1 rounded-full py-2 text-[13px] font-medium transition-colors",
+                        "focus-visible:outline-primary-03 min-h-11 flex-1 rounded-full px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
                         isSelected
                           ? "bg-neutral-01 text-neutral-07 shadow-sm"
                           : "text-neutral-04",
@@ -121,10 +126,13 @@ const ShareSheet = ({
               </div>
             )}
 
-            <div className="mt-4 max-h-[50vh] overflow-y-auto">{children}</div>
+            <div className="mt-4 max-h-[48dvh] overflow-y-auto rounded-[20px]">
+              {children}
+            </div>
 
             <div className="mt-5 flex gap-3">
               <Button
+                size="lg"
                 icon={<Download className="h-4.5 w-4.5" />}
                 onClick={onDownload}
                 disabled={isProcessing}
@@ -134,6 +142,7 @@ const ShareSheet = ({
               </Button>
               <Button
                 variant="solid"
+                size="lg"
                 icon={<Share className="h-4.5 w-4.5" />}
                 onClick={onShare}
                 disabled={isProcessing}

@@ -1,7 +1,10 @@
 import { http, HttpResponse, delay } from "msw";
 
 import { API_ENDPOINTS } from "@/services/constant/endpoint";
-import type { PreferenceQuestion } from "@/types/preference";
+import type {
+  PreferenceQuestion,
+  PreferenceSubmitRequest,
+} from "@/types/preference";
 
 /**
  * 성향 검사 질문 mock.
@@ -439,8 +442,38 @@ export const preferenceHandlers = [
     });
   }),
 
-  // 나의 성향(결과) 조회. userId는 어떤 값이 와도 mock 결과 반환.
-  http.get(`${BASE_URL}/api/users/:userId/preference`, async () => {
+  http.post(
+    `${BASE_URL}${API_ENDPOINTS.preference.submit(1)}`,
+    async ({ request }) => {
+      const body = (await request.json()) as Partial<PreferenceSubmitRequest>;
+
+      if (
+        !Array.isArray(body.answers) ||
+        body.answers.length !== SERVED_QUESTION_COUNT
+      ) {
+        return HttpResponse.json(
+          {
+            code: 400,
+            data: null,
+            message: "모든 질문에 답해 주세요.",
+            success: false,
+          },
+          { status: 400 },
+        );
+      }
+
+      await delay(600);
+      return HttpResponse.json({
+        code: 200,
+        data: null,
+        message: "성향 검사를 제출했습니다.",
+        success: true,
+      });
+    },
+  ),
+
+  // 나의 성향(결과) 조회. 현재 결과 화면의 임시 userId(1)에 응답한다.
+  http.get(`${BASE_URL}${API_ENDPOINTS.preference.result(1)}`, async () => {
     await delay(600);
     return HttpResponse.json({
       code: 200,

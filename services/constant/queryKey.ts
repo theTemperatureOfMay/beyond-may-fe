@@ -7,6 +7,7 @@ export const QUERY_KEYS = {
   },
   COURSE: {
     ALL: ["course"] as const,
+    LIST: () => [...QUERY_KEYS.COURSE.ALL, "list"] as const,
     DETAIL: (courseId: string) =>
       [...QUERY_KEYS.COURSE.ALL, "detail", courseId] as const,
   },

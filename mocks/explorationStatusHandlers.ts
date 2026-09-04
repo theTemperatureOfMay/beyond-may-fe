@@ -26,12 +26,24 @@ const MOCK_STATUS: ExplorationStatusResponse = {
 };
 
 export const explorationStatusHandlers = [
-  http.get(`${BASE_URL}/api/v1/explorations/:explorationId`, async () => {
+  http.get(`${BASE_URL}/api/v1/explorations/:explorationId`, async ({ params }) => {
     await delay(300);
+    const isDraftCourse = String(params.explorationId).startsWith("course_draft");
     return HttpResponse.json({
       message: "성공입니다.",
       code: "COMMON200",
-      data: MOCK_STATUS,
+      data: isDraftCourse
+        ? {
+            ...MOCK_STATUS,
+            status: "BEFORE",
+            startedByParticipantId: null,
+            startedAt: null,
+            currentParticipant: {
+              ...MOCK_STATUS.currentParticipant,
+              role: "OWNER",
+            },
+          }
+        : MOCK_STATUS,
       success: true,
     });
   }),

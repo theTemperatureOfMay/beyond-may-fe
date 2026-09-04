@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import GradientBackground from "@/components/ui/GradientBackground";
@@ -32,7 +32,7 @@ import ShareCollageCard from "@/features/onboarding/components/ShareCollageCard"
 
 /** 공유 이미지 버전: 화면 그대로(기록형) / 우표 엽서(스토리형, 원본 피그마 목업 기준) */
 const SHARE_VERSIONS = [
-  { id: "record", label: "화면 그대로" },
+  { id: "record", label: "결과 카드" },
   { id: "collage", label: "우표 엽서" },
 ] as const;
 type ShareVersionId = (typeof SHARE_VERSIONS)[number]["id"];
@@ -48,6 +48,9 @@ const ResultPage = () => {
   const TEMP_USER_ID = 1;
 
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isLeaveOpen, setIsLeaveOpen] = useState(false);
+  const [isAlmostDone, setIsAlmostDone] = useState(false);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
   const [shareVersion, setShareVersion] = useState<ShareVersionId>("record");
   /** 이미지 생성 실패 시 다시 시도할 동작을 담아둔다. null이면 에러 모달 닫힘. */
   const [captureRetry, setCaptureRetry] = useState<(() => void) | null>(null);
@@ -61,6 +64,18 @@ const ResultPage = () => {
   const { data, isLoading, isError, refetch } =
     useGetPreferenceResultQuery(TEMP_USER_ID);
 
+  useEffect(() => {
+    if (!isLoading) return;
+    const timer = window.setTimeout(() => setIsAlmostDone(true), 1200);
+    return () => window.clearTimeout(timer);
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (data) {
+      localStorage.setItem("beyond-may-preference-result", JSON.stringify(data));
+    }
+  }, [data]);
+
   // 로딩/에러: 결과 계산 대기 화면 (그라디언트 배경)
   if (isLoading || isError || !data) {
     return (
@@ -68,28 +83,34 @@ const ResultPage = () => {
         <GradientBackground className="opacity-70" />
 
         {/* 상단 헤더 (Home). 로딩 화면 디자인 기준 */}
-        <AppHeader showMenu={false} className="text-neutral-04" />
+        <AppHeader
+          showMenu={false}
+          onHome={isLoading ? () => setIsLeaveOpen(true) : undefined}
+          className="text-neutral-04"
+        />
 
         {isError ? (
           <section className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
             <p className="text-neutral-07/70 text-[15px]">
               결과를 불러오지 못했어요.
             </p>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="border-neutral-07 text-neutral-07 rounded-full border px-6 py-3 text-[15px] font-medium"
-            >
+            <Button size="lg" onClick={() => refetch()}>
               다시 시도
-            </button>
+            </Button>
           </section>
         ) : (
           <>
             <section className="flex flex-1 flex-col items-center justify-center px-8 text-center">
               <p className="text-neutral-07 text-[20px] leading-relaxed font-medium">
-                당신의 여행 유형을
-                <br />
-                분석하고 있어요
+                {isAlmostDone ? (
+                  "거의 완료되었습니다"
+                ) : (
+                  <>
+                    당신의 여행 유형을
+                    <br />
+                    분석하고 있어요
+                  </>
+                )}
               </p>
               <span
                 className="border-neutral-07/20 border-t-neutral-07 mt-2 block h-[42px] w-[42px] animate-spin rounded-full border-2"
@@ -102,6 +123,32 @@ const ResultPage = () => {
             </p>
           </>
         )}
+
+        <Modal open={isLeaveOpen} onClose={() => setIsLeaveOpen(false)}>
+          <h2 className="text-neutral-07 text-[20px] font-semibold">
+            결과를 계산하고 있어요. 나가시겠어요?
+          </h2>
+          <p className="text-neutral-04 mt-2 text-[13px] leading-[1.55]">
+            나가도 답변은 24시간 동안 저장돼요.
+          </p>
+          <div className="mt-5 flex flex-col gap-2">
+            <Button
+              variant="solid"
+              size="lg"
+              className="w-full"
+              onClick={() => router.push("/")}
+            >
+              나가기
+            </Button>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => setIsLeaveOpen(false)}
+            >
+              기다리기
+            </Button>
+          </div>
+        </Modal>
       </main>
     );
   }
@@ -127,36 +174,67 @@ const ResultPage = () => {
 
   // 결과 도착: 유형 카드 + 추천 장소 (흰 배경)
   return (
-    <main className="bg-neutral-01 mx-auto min-h-[100dvh] w-full max-w-[430px] pb-16">
+    <main className="bg-neutral-01 mx-auto min-h-[100dvh] w-full max-w-[430px] pb-[max(48px,env(safe-area-inset-bottom))]">
       <AppHeader showMenu={false} className="text-neutral-04" />
 
       <ResultTypeCard result={data} />
+
+      {!hadSessionOnEnter ? (
+        <NicknameRegisterSection />
+      ) : (
+        <section className="mt-8 px-6">
+          <Button
+            variant="solid"
+            size="lg"
+            className="w-full"
+            onClick={() => router.push("/places")}
+          >
+            추천 장소 보러 가기
+          </Button>
+        </section>
+      )}
+
       <RecommendedPlaceList
         mbtiName={data.mbtiName}
-        places={data.recommendedPlaces}
+        places={data.recommendedPlaces.slice(0, 2)}
       />
 
-      <section className="mt-6 flex gap-3 px-6">
+      <section className="border-neutral-03 mt-10 border-t px-6 pt-8">
+        <p className="text-neutral-04 text-[13px] font-medium">결과 보관하기</p>
+        <div className="mt-3 flex gap-3">
+          <Button
+            size="lg"
+            icon={<Share className="h-4.5 w-4.5" />}
+            onClick={() => setIsShareOpen(true)}
+            className="flex-1"
+          >
+            결과 공유하기
+          </Button>
+          <Button
+            size="lg"
+            icon={<Undo className="h-4.5 w-4.5" />}
+            onClick={() => router.push("/onboarding")}
+            className="shrink-0 px-4"
+          >
+            다시 검사
+          </Button>
+        </div>
         <Button
           size="lg"
-          icon={<Share className="h-4.5 w-4.5" />}
-          onClick={() => setIsShareOpen(true)}
-          className="flex-2"
+          className="mt-3 w-full"
+          onClick={async () => {
+            await navigator.clipboard?.writeText(
+              `${window.location.origin}/result/${data.type}`,
+            );
+            setIsLinkCopied(true);
+          }}
         >
-          결과 이미지 공유하기
+          {isLinkCopied ? "결과 링크가 복사되었습니다" : "결과 링크 복사"}
         </Button>
-        <Button
-          size="lg"
-          icon={<Undo className="h-4.5 w-4.5" />}
-          onClick={() => router.push("/onboarding")}
-          className="flex-1"
-        >
-          다시하기
-        </Button>
+        <p className="text-neutral-04 mt-2 text-[11px] leading-[1.5]">
+          인스타그램은 이미지를 저장한 뒤 앱에서 업로드해 주세요.
+        </p>
       </section>
-
-      {/* 성향 O, 닉네임 X — 로그인 전(세션 없음) 사용자만 닉네임 등록으로 유도 */}
-      {!hadSessionOnEnter && <NicknameRegisterSection />}
 
       <ShareSheet
         open={isShareOpen}

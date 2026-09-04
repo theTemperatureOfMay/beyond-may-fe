@@ -4,6 +4,7 @@ import { type ReactNode, useRef, useState } from "react";
 
 import type { PlaceDetailResponse } from "@/types/place";
 import { cn } from "@/lib/cn";
+import useDialogFocus from "@/hooks/useDialogFocus";
 
 interface PlaceDetailSheetProps {
   place: PlaceDetailResponse;
@@ -13,6 +14,8 @@ interface PlaceDetailSheetProps {
    * 호출하는 화면이 원하는 버튼을 그대로 전달한다.
    */
   footer?: ReactNode;
+  /** Escape 키 등 시트 자체의 닫기 상호작용을 부모 상태와 연결한다. */
+  onClose?: () => void;
   /** 사진 영역 비율(Tailwind aspect-* 클래스). 화면마다 사진 높이가 달라 조절 가능하게 둠. 기본 aspect-video */
   imageAspectRatio?: string;
   className?: string;
@@ -27,9 +30,11 @@ interface PlaceDetailSheetProps {
 const PlaceDetailSheet = ({
   place,
   footer,
+  onClose,
   imageAspectRatio = "aspect-video",
   className,
 }: PlaceDetailSheetProps) => {
+  const dialogRef = useDialogFocus<HTMLDivElement>(true, onClose);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -45,16 +50,17 @@ const PlaceDetailSheet = ({
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
+      aria-modal="true"
       aria-label={place.name}
+      tabIndex={-1}
       className={cn(
-        "bg-neutral-01 flex max-h-[85vh] w-full max-w-[430px] flex-col rounded-t-xl pt-3",
+        "flex max-h-[88dvh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-[24px] bg-white focus:outline-none",
         className,
       )}
     >
-      <div className="bg-neutral-03 mx-auto h-1 w-10 shrink-0 rounded-full" />
-
-      <div className="flex-1 overflow-y-auto pt-3">
+      <div className="flex-1 overflow-y-auto">
         {/* 장소 사진 배너 — 가로로 꽉 차게, 여러 장이면 옆으로 스와이프 */}
         <div className="relative">
           <div
@@ -66,17 +72,27 @@ const PlaceDetailSheet = ({
               <div
                 key={index}
                 className={cn(
-                  "bg-neutral-03 w-full shrink-0 snap-center",
+                  "bg-neutral-02 relative w-full shrink-0 snap-center overflow-hidden",
                   imageAspectRatio,
                 )}
               >
-                {imageUrl && (
+                {imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={imageUrl}
                     alt={`${place.name} 사진 ${index + 1}`}
                     className="h-full w-full object-cover"
                   />
+                ) : (
+                  <div className="bg-primary-04 absolute inset-0 flex items-end overflow-hidden p-6">
+                    <span
+                      aria-hidden="true"
+                      className="border-primary-01/80 absolute -top-20 -right-16 h-64 w-64 rounded-full border-[48px]"
+                    />
+                    <span className="text-neutral-07 relative text-[14px] font-semibold">
+                      광주 · {place.name}
+                    </span>
+                  </div>
                 )}
               </div>
             ))}
@@ -97,23 +113,28 @@ const PlaceDetailSheet = ({
           )}
         </div>
 
-        <div className="px-5">
-          <h2 className="text-neutral-07 mt-4 text-[18px] font-semibold">
+        <div className="px-6 pt-5">
+          <p className="text-neutral-04 text-[12px] font-medium">
+            {place.category}
+          </p>
+          <h2 className="text-neutral-07 mt-1 text-[24px] font-bold">
             {place.name}
           </h2>
-          <p className="text-neutral-04 mt-1 text-[13px]">{place.address}</p>
-          {place.businessHours && (
-            <p className="text-neutral-04 mt-1 text-[13px]">
-              운영시간 {place.businessHours}
-            </p>
-          )}
+          <p className="text-neutral-04 mt-2 text-[13px] leading-[1.5]">
+            {place.address}
+          </p>
+          <p className="text-neutral-04 mt-1 text-[13px]">
+            {place.businessHours
+              ? `운영시간 ${place.businessHours}`
+              : "운영시간 정보 없음"}
+          </p>
 
           {place.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {place.tags.map((tag, index) => (
                 <span
                   key={`${tag}-${index}`}
-                  className="bg-neutral-02 text-neutral-06 rounded-full px-2.5 py-1 text-[12px]"
+                  className="bg-neutral-02 text-neutral-07 rounded-full px-3 py-1.5 text-[12px] font-medium"
                 >
                   {tag}
                 </span>
@@ -121,13 +142,17 @@ const PlaceDetailSheet = ({
             </div>
           )}
 
-          <p className="text-neutral-06 mt-3 text-[14px] leading-relaxed">
-            {place.description}
+          <p className="text-neutral-07 mt-4 text-[15px] leading-[1.6]">
+            {place.description || "상세 설명 정보 없음"}
           </p>
         </div>
       </div>
 
-      {footer && <div className="px-5 pt-3 pb-8">{footer}</div>}
+      {footer && (
+        <div className="border-neutral-03 border-t px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+          {footer}
+        </div>
+      )}
     </div>
   );
 };

@@ -62,7 +62,8 @@ api.interceptors.response.use(
       // 인증 만료/무효 — 세션 정리 후 로그인 유도 (refresh API 없음)
       if (typeof window !== "undefined") {
         localStorage.removeItem("accessToken");
-        // TODO: 세션 스토어 clear + 로그인 화면 이동 (구현 방식 팀 논의)
+        localStorage.removeItem("session-storage");
+        window.location.assign("/?session=expired");
       }
     }
     return Promise.reject(error);

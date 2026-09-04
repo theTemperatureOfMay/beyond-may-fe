@@ -24,7 +24,7 @@ const MyLocationButton = ({
     aria-label="내 위치로"
     style={style}
     className={cn(
-      "text-neutral-07 active:bg-neutral-02 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25)]",
+      "text-neutral-07 hover:bg-neutral-01 focus-visible:outline-primary-03 active:bg-neutral-02 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(20,20,20,0.2)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
       className,
     )}
   >

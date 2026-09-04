@@ -1,134 +1,253 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { use, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import {
+  AnimatePresence,
   motion,
   useMotionValueEvent,
-  useReducedMotion,
   useScroll,
   useTransform,
 } from "framer-motion";
 
-import GradientBackground from "@/components/ui/GradientBackground";
-import ScrollIndicator from "@/components/ui/ScrollIndicator";
 import AppHeader from "@/components/layout/AppHeader";
 import Sidebar from "@/components/layout/sidebar/Sidebar";
 import SidebarLoginForm from "@/components/layout/sidebar/SidebarLoginForm";
 import SidebarProfileMenu from "@/components/layout/sidebar/SidebarProfileMenu";
-import { getExplorations } from "@/services/api/exploration/explorationApi";
-import { QUERY_KEYS } from "@/services/constant/queryKey";
+import GradientBackground from "@/components/ui/GradientBackground";
+import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
+import ScrollIndicator from "@/components/ui/ScrollIndicator";
+import Share from "@/components/ui/icons/Share";
 import useSessionStore from "@/stores/sessionStore";
 
-/** 스크롤 한 번으로 모션이 끝까지 재생되도록 하는 가상 스크롤 트랙 길이 */
-const SCROLL_TRACK_HEIGHT = "240dvh";
+/** 세 시안을 보여준 뒤 한 번 더 스크롤하면 기존 온보딩으로 이동한다. */
+const FRAME_COUNT = 4;
+const FINAL_DESIGN_FRAME_PROGRESS = 2 / 3;
 
-/**
- * 서비스 시작 화면 (기능명세 1.1.1).
- *
- * 화면은 한 화면(히어로)에 고정(sticky)되어 있고, 그 뒤에 깔린 가상 스크롤 트랙을
- * 끝까지 스크롤하면 배경의 아치·태양 원과 타이틀 텍스트가 위로 이동하며 페이드아웃되고,
- * 모션이 끝나는 시점에 자동으로 성향 검사 온보딩(/onboarding)으로 전환된다.
- *
- * 세션 분기(1.1.1):
- *   - 세션 없음        → 이 화면 유지
- *   - 세션 O, 코스 X   → /places 로 리다이렉트
- *   - 세션 O, 코스 O   → /explore 로 리다이렉트
- * "성향 O, 닉네임 X"(로그인 전 성향검사만 마친 사용자) 분기는 닉네임/세션 등록
- * 이슈에서 처리한다.
- *
- * 코스 존재 여부는 진행 중(ONGOING)인 탐험이 있는지로 판단한다
- * (GET /explorations?status=ONGOING).
- * TODO(백엔드 확인): 코스를 막 확정했지만 아직 탐험을 시작하지 않은 상태(BEFORE)는
- *   이 조회로 안 잡힌다 — ONGOING/COMPLETED만 지원되는지, BEFORE 상태 코스는
- *   어떻게 판단해야 하는지 백엔드 확인 필요. 조회 실패 시에는 안전하게 /places로 보낸다.
- */
-const HomePage = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+interface HomePageProps {
+  searchParams: Promise<{ session?: string }>;
+}
+
+const HomePage = ({ searchParams }: HomePageProps) => {
+  const { session } = use(searchParams);
+  const hasExpiredSession = session === "expired";
+  const [isMenuOpen, setIsMenuOpen] = useState(hasExpiredSession);
+  const [isFinalFrame, setIsFinalFrame] = useState(false);
+  const [isServiceShareOpen, setIsServiceShareOpen] = useState(false);
+  const [isShareLinkCopied, setIsShareLinkCopied] = useState(false);
+  const scrollRef = useRef<HTMLElement>(null);
+  const hasNavigated = useRef(false);
   const isLoggedIn = useSessionStore((state) => state.isLoggedIn);
-
   const router = useRouter();
 
-  const {
-    data: ongoingExplorations,
-    isLoading: isCheckingCourse,
-    isError: isCourseCheckError,
-  } = useQuery({
-    queryKey: QUERY_KEYS.EXPLORATION.LIST("ONGOING"),
-    queryFn: () => getExplorations("ONGOING"),
-    enabled: isLoggedIn,
-  });
-  const trackRef = useRef<HTMLDivElement>(null);
-  const hasNavigated = useRef(false);
-  const prefersReducedMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({ container: scrollRef });
+  const visualProgress = useTransform(
+    scrollYProgress,
+    [0, 1 / 3, FINAL_DESIGN_FRAME_PROGRESS],
+    [0, 0.5, 1],
+  );
 
-  const { scrollYProgress } = useScroll({
-    target: trackRef,
-    offset: ["start start", "end end"],
+  const subtitleTop = useTransform(
+    visualProgress,
+    [0, 0.5, 1],
+    ["61.8%", "32.1%", "32.1%"],
+  );
+  const titleTop = useTransform(
+    visualProgress,
+    [0, 0.5, 1],
+    ["65.8%", "36%", "10.6%"],
+  );
+  const textColor = useTransform(
+    visualProgress,
+    [0, 0.5, 1],
+    ["#141414", "#BEC2C0", "#BEC2C0"],
+  );
+  const startTop = useTransform(
+    visualProgress,
+    [0, 0.5, 1],
+    ["91.5%", "66.5%", "41.5%"],
+  );
+  useMotionValueEvent(visualProgress, "change", (progress) => {
+    setIsFinalFrame(progress > 0.75);
   });
-
-  useMotionValueEvent(scrollYProgress, "change", (value) => {
-    if (value < 0.98 || hasNavigated.current) return;
+  useMotionValueEvent(scrollYProgress, "change", (progress) => {
+    if (isLoggedIn || progress < 0.98 || hasNavigated.current) return;
     hasNavigated.current = true;
     router.push("/onboarding");
   });
 
-  useEffect(() => {
-    if (!isLoggedIn) return; // 세션 없음 → 이 화면 유지
-    if (isCheckingCourse) return; // 조회 완료 후 분기
+  const handleSystemShare = async (): Promise<void> => {
+    const shareData = {
+      title: "5월 너머의 광주",
+      text: "광주 동행 지도, 5월 너머의 광주",
+      url: window.location.href,
+    };
 
-    // 조회 실패 시 안전하게 장소 선택으로 보낸다 (TODO: 백엔드 에러 정책 확인 필요)
-    const hasOngoingCourse =
-      !isCourseCheckError &&
-      (ongoingExplorations?.explorations.length ?? 0) > 0;
-    router.push(hasOngoingCourse ? "/explore" : "/places");
-  }, [
-    isLoggedIn,
-    isCheckingCourse,
-    isCourseCheckError,
-    ongoingExplorations,
-    router,
-  ]);
+    if (navigator.share) {
+      await navigator.share(shareData).catch(() => undefined);
+      return;
+    }
 
-  const titleY = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const titleOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-  const titleStyle = prefersReducedMotion
-    ? undefined
-    : { y: titleY, opacity: titleOpacity };
+    await navigator.clipboard?.writeText(shareData.url).catch(() => undefined);
+    setIsShareLinkCopied(true);
+  };
 
   return (
     <main
-      ref={trackRef}
-      className="relative mx-auto w-full max-w-[430px]"
-      style={{ height: SCROLL_TRACK_HEIGHT }}
+      ref={scrollRef}
+      className="scrollbar-hide relative mx-auto h-dvh w-full max-w-[430px] snap-y snap-mandatory overflow-y-auto overscroll-y-contain"
     >
-      <div className="sticky top-0 flex h-dvh flex-col overflow-hidden pb-10">
-        <GradientBackground progress={scrollYProgress} />
+      <div
+        className="relative isolate"
+        style={{ height: `${FRAME_COUNT}00dvh` }}
+      >
+        <div className="sticky top-0 h-dvh overflow-hidden">
+          <GradientBackground progress={visualProgress} />
 
-        <AppHeader onOpenMenu={() => setIsMenuOpen(true)} />
+          <AppHeader
+            showHome={false}
+            onOpenMenu={() => setIsMenuOpen(true)}
+            className="text-white-01"
+          />
 
-        <div className="flex-1" />
+          {hasExpiredSession && (
+            <p
+              className="absolute top-[max(72px,calc(env(safe-area-inset-top)+60px))] right-4 left-4 z-30 rounded-2xl bg-white/92 px-4 py-3 text-center text-[13px] font-medium text-neutral-07 shadow-lg backdrop-blur"
+              role="alert"
+            >
+              로그인 시간이 만료됐어요. 다시 로그인해 주세요.
+            </p>
+          )}
 
-        <motion.div style={titleStyle} className="text-neutral-07 px-8">
-          <p className="text-[20px] font-medium tracking-[0.35em]">
+          <motion.button
+            type="button"
+            aria-label="서비스 공유"
+            onClick={() => setIsServiceShareOpen(true)}
+            aria-hidden={isFinalFrame}
+            tabIndex={isFinalFrame ? -1 : 0}
+            className={`focus-visible:outline-primary-03 text-white-01 absolute top-[max(12px,env(safe-area-inset-top))] left-4 z-30 flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 ${isFinalFrame ? "pointer-events-none opacity-0" : "opacity-100"}`}
+          >
+            <Share className="h-5 w-5" />
+          </motion.button>
+
+          <motion.p
+            style={{ top: subtitleTop, color: textColor }}
+            className="absolute left-[7.7%] text-[20px] leading-none font-medium tracking-[0.12em]"
+          >
             광주 동행 지도
-          </p>
-          <h1 className="mt-3 text-[64px] leading-[1.18] font-bold tracking-tight">
+          </motion.p>
+
+          <motion.h1
+            style={{ top: titleTop, color: textColor }}
+            className="absolute left-[7.2%] text-[64px] leading-[1.18] font-bold tracking-[-0.035em]"
+          >
             5월 너머의
             <br />
             광주
-          </h1>
-        </motion.div>
+          </motion.h1>
 
-        <div className="mt-23 flex justify-center">
-          <ScrollIndicator label="TAB" href="/onboarding" />
+          <motion.div
+            style={{ top: startTop }}
+            aria-hidden={isFinalFrame}
+            className={`absolute inset-x-0 flex justify-center transition-opacity ${isFinalFrame ? "pointer-events-none invisible opacity-0" : "opacity-100"}`}
+          >
+            <ScrollIndicator
+              label="성향 검사 시작"
+              href="/onboarding"
+              className="gap-0.5"
+            />
+          </motion.div>
+
+          <AnimatePresence>
+            {isLoggedIn && isFinalFrame && (
+              <motion.section
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 18 }}
+                className="absolute inset-x-5 bottom-[max(20px,env(safe-area-inset-bottom))] z-30 rounded-[24px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_50px_rgba(20,20,20,0.16)] backdrop-blur-xl"
+                aria-label="다시 방문한 사용자 메뉴"
+              >
+                <p className="text-neutral-07 text-[18px] font-bold">
+                  다시 광주를 걸어볼까요?
+                </p>
+                <p className="text-neutral-04 mt-1 text-[12px]">
+                  만들던 코스와 지난 기록을 여기서 이어볼 수 있어요.
+                </p>
+                <Link
+                  href="/course"
+                  className="bg-neutral-07 text-neutral-01 focus-visible:outline-primary-03 mt-4 flex min-h-12 w-full items-center justify-center rounded-full px-4 text-[14px] font-semibold"
+                >
+                  내 코스에서 이어가기
+                </Link>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Link
+                    href="/record"
+                    className="border-neutral-03 text-neutral-07 focus-visible:outline-primary-03 flex min-h-11 items-center justify-center rounded-full border bg-white px-3 text-[13px] font-medium"
+                  >
+                    여행 기록
+                  </Link>
+                  <Link
+                    href="/places"
+                    className="border-neutral-03 text-neutral-07 focus-visible:outline-primary-03 flex min-h-11 items-center justify-center rounded-full border bg-white px-3 text-[13px] font-medium"
+                  >
+                    새 코스 만들기
+                  </Link>
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
         </div>
+
+        {Array.from({ length: FRAME_COUNT }, (_, index) => (
+          <div
+            key={index}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 h-dvh snap-start"
+            style={{ top: `${index}00dvh` }}
+          />
+        ))}
       </div>
 
       <Sidebar open={isMenuOpen} onClose={() => setIsMenuOpen(false)}>
         {isLoggedIn ? <SidebarProfileMenu /> : <SidebarLoginForm />}
       </Sidebar>
+
+      <Modal
+        open={isServiceShareOpen}
+        onClose={() => setIsServiceShareOpen(false)}
+      >
+        <p className="text-primary-08 text-[12px] font-semibold tracking-[0.1em]">
+          SHARE THE JOURNEY
+        </p>
+        <h2 className="text-neutral-07 mt-2 text-[20px] font-semibold">
+          광주 동행 지도를 함께 볼까요?
+        </h2>
+        <p className="text-neutral-04 mt-2 text-[13px] leading-[1.55]">
+          링크를 복사하거나 기기의 공유 메뉴에서 카카오톡을 선택해 주세요.
+        </p>
+        <div className="mt-5 flex flex-col gap-2">
+          <Button
+            variant="solid"
+            size="lg"
+            className="w-full"
+            onClick={() => void handleSystemShare()}
+          >
+            카카오톡·시스템 공유
+          </Button>
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={async () => {
+              await navigator.clipboard?.writeText(window.location.origin);
+              setIsShareLinkCopied(true);
+            }}
+          >
+            {isShareLinkCopied ? "링크가 복사되었습니다" : "링크 복사"}
+          </Button>
+        </div>
+      </Modal>
     </main>
   );
 };

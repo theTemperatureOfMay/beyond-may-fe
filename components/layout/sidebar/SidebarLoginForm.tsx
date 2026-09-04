@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import Link from "next/link";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { isAxiosError } from "axios";
-import Link from "next/link";
 
 import { cn } from "@/lib/cn";
 import Button from "@/components/ui/Button";
-import ChevronRight from "@/components/ui/icons/ChevronRight";
 import { usePostLoginMutation } from "./usePostLoginMutation";
 
 const loginSchema = z.object({
@@ -31,7 +30,7 @@ const SidebarLoginForm = () => {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { isValid },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -40,10 +39,10 @@ const SidebarLoginForm = () => {
   });
   const { mutate, isPending, isError, error, reset } = usePostLoginMutation();
 
-  const [nickname, identificationCode] = watch([
-    "nickname",
-    "identificationCode",
-  ]);
+  const [nickname, identificationCode] = useWatch({
+    control,
+    name: ["nickname", "identificationCode"],
+  });
 
   useEffect(() => {
     if (isError) reset();
@@ -68,11 +67,16 @@ const SidebarLoginForm = () => {
 
   return (
     <div>
-      <h2 className="text-neutral-07 text-[13px] font-normal">로그인</h2>
-      <p className="text-neutral-07 mt-3 text-[15px] leading-relaxed font-medium">
-        닉네임을 입력하면
+      <p className="text-primary-08 text-[12px] font-semibold tracking-[0.08em]">
+        여행 이어가기
+      </p>
+      <h2 className="text-neutral-07 mt-2 text-[22px] leading-[1.4] font-bold">
+        이전에 만든 여행을
         <br />
-        이전 여행을 이어갈 수 있어요.
+        다시 열어볼까요?
+      </h2>
+      <p className="text-neutral-04 mt-2 text-[13px] leading-[1.5]">
+        등록한 닉네임과 식별코드를 입력해 주세요.
       </p>
 
       <form
@@ -89,9 +93,10 @@ const SidebarLoginForm = () => {
           <input
             id="sidebar-login-nickname"
             type="text"
-            placeholder="닉네임을 입력해주세요."
+            autoComplete="username"
+            placeholder="닉네임을 입력해 주세요"
             className={cn(
-              "border-neutral-03 mt-1.5 w-full rounded-lg border px-3.5 py-3 text-[15px]",
+              "border-neutral-03 bg-neutral-01 focus:border-primary-03 focus:ring-primary-03 mt-1.5 min-h-12 w-full rounded-xl border px-4 text-[15px] transition-shadow outline-none focus:ring-1",
               "placeholder:text-neutral-04",
               errorMessage && "border-caution-02 bg-caution-01",
             )}
@@ -110,16 +115,20 @@ const SidebarLoginForm = () => {
             id="sidebar-login-code"
             type="text"
             inputMode="numeric"
-            placeholder="부여된 식별코드를 입력해주세요."
+            autoComplete="one-time-code"
+            maxLength={2}
+            placeholder="1~99 사이의 식별코드"
             className={cn(
-              "border-neutral-03 mt-1.5 w-full rounded-lg border px-3.5 py-3 text-[15px]",
+              "border-neutral-03 bg-neutral-01 focus:border-primary-03 focus:ring-primary-03 mt-1.5 min-h-12 w-full rounded-xl border px-4 text-[15px] transition-shadow outline-none focus:ring-1",
               "placeholder:text-neutral-04",
               errorMessage && "border-caution-02 bg-caution-01",
             )}
             {...register("identificationCode")}
           />
           {errorMessage && (
-            <p className="text-caution-02 mt-1.5 text-[12px]">{errorMessage}</p>
+            <p className="text-caution-02 mt-1.5 text-[12px]" role="alert">
+              {errorMessage}
+            </p>
           )}
         </div>
 
@@ -128,30 +137,27 @@ const SidebarLoginForm = () => {
           variant="solid"
           size="lg"
           disabled={!isValid || isPending}
+          isLoading={isPending}
           className="mt-2 w-full"
         >
-          시작하기
+          여행 이어가기
         </Button>
       </form>
 
-      <div className="border-neutral-02 mt-6 border-t">
-        {/* TODO: 서비스 소개 페이지 경로 미확정 */}
-        <button
-          type="button"
-          className="border-neutral-02 flex w-full cursor-pointer items-center justify-between border-b py-4 text-[15px]"
+      <nav className="border-neutral-03 mt-8 border-t pt-3" aria-label="서비스 메뉴">
+        <Link
+          href="/"
+          className="text-neutral-07 flex min-h-12 items-center text-[14px] font-medium"
         >
           서비스 소개
-          <ChevronRight className="text-neutral-04 h-3 w-3" />
-        </button>
-
+        </Link>
         <Link
           href="/onboarding"
-          className="flex w-full items-center justify-between py-4 text-[15px]"
+          className="text-neutral-07 flex min-h-12 items-center text-[14px] font-medium"
         >
           성향 검사 시작
-          <ChevronRight className="text-neutral-04 h-3 w-3" />
         </Link>
-      </div>
+      </nav>
     </div>
   );
 };

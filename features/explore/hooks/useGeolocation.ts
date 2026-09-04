@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { GPS_ACCURACY_THRESHOLD_METERS } from "@/lib/geo/distance";
 import useGeolocationStore from "@/stores/geolocationStore";
 
@@ -13,7 +13,8 @@ interface UseGeolocationParams {
  */
 const useGeolocation = ({
   enabled = true,
-}: UseGeolocationParams = {}): void => {
+}: UseGeolocationParams = {}): (() => void) => {
+  const [requestKey, setRequestKey] = useState(0);
   const setCoordinates = useGeolocationStore((state) => state.setCoordinates);
   const setPermission = useGeolocationStore((state) => state.setPermission);
   const setAccurate = useGeolocationStore((state) => state.setAccurate);
@@ -28,6 +29,8 @@ const useGeolocation = ({
       setError("이 브라우저에서는 위치 기능을 사용할 수 없습니다.");
       return;
     }
+
+    setError(null);
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
@@ -55,7 +58,16 @@ const useGeolocation = ({
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [enabled, setCoordinates, setPermission, setAccurate, setError]);
+  }, [
+    enabled,
+    requestKey,
+    setCoordinates,
+    setPermission,
+    setAccurate,
+    setError,
+  ]);
+
+  return () => setRequestKey((previous) => previous + 1);
 };
 
 export default useGeolocation;

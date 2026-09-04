@@ -103,8 +103,20 @@ const StampPhoto = ({
           y={innerY}
           width={innerWidth}
           height={innerHeight}
-          fill="var(--color-neutral-03)"
+          fill={src ? "var(--color-neutral-03)" : paperColor}
         />
+        {!src && (
+          <circle
+            cx={innerX + innerWidth}
+            cy={innerY}
+            r={Math.min(innerWidth, innerHeight) * 0.44}
+            fill="none"
+            stroke="var(--color-neutral-01)"
+            strokeWidth={Math.max(12, innerWidth * 0.12)}
+            opacity={0.35}
+            clipPath={`url(#${clipId})`}
+          />
+        )}
         {src && (
           // 주의(CORS): crossOrigin="anonymous"는 원격 서버가 CORS를 허용해야 유효하다.
           // 허용되지 않으면 캔버스가 오염되어 useCaptureImage의 캡처(toBlob)가 실패한다.
@@ -122,7 +134,7 @@ const StampPhoto = ({
         )}
       </svg>
       {!src && (
-        <span className="text-neutral-04 absolute inset-0 flex items-center justify-center px-8 text-center text-[11px]">
+        <span className="text-neutral-07 absolute inset-0 flex items-center justify-center px-8 text-center text-[12px] font-semibold">
           {alt}
         </span>
       )}

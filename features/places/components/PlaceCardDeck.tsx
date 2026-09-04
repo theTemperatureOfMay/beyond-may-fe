@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 
 import { cn } from "@/lib/cn";
+import Button from "@/components/ui/Button";
 import CircleIconButton from "@/components/ui/CircleIconButton";
 import ImageIcon from "@/components/ui/icons/Image";
 import Undo from "@/components/ui/icons/Undo";
@@ -130,8 +131,8 @@ const PlaceCardDeck = ({
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative h-134 w-75">
+    <div className="flex w-full flex-col items-center">
+      <div className="relative h-[clamp(360px,56dvh,500px)] w-full max-w-[342px]">
         <AnimatePresence>
           {showLikedToast && (
             <motion.div
@@ -139,7 +140,7 @@ const PlaceCardDeck = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="bg-neutral-07 text-neutral-01 absolute top-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-medium"
+              className="bg-neutral-07 text-neutral-01 absolute top-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-medium whitespace-nowrap"
             >
               <HeartFilled className="h-3.5 w-3.5" />
               담은 장소 {likedCount}개
@@ -171,6 +172,20 @@ const PlaceCardDeck = ({
                 onDrag={isTop ? handleDrag : undefined}
                 onDragEnd={isTop ? handleDragEnd : undefined}
                 onTap={isTop ? () => handleTap(place.placeId) : undefined}
+                onKeyDown={
+                  isTop
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onSelectTopPlace(place.placeId);
+                        }
+                      }
+                    : undefined
+                }
+                role={isTop ? "button" : undefined}
+                tabIndex={isTop ? 0 : -1}
+                aria-label={isTop ? `${place.name} 상세 보기` : undefined}
+                aria-hidden={!isTop}
                 onAnimationComplete={() => {
                   setExitDirections((prev) => {
                     if (!prev.has(place.placeId)) return prev;
@@ -202,7 +217,7 @@ const PlaceCardDeck = ({
                 transition={{ type: "spring", stiffness: 350, damping: 26 }}
                 style={{ zIndex: visiblePlaces.length - stackIndex }}
                 className={cn(
-                  "bg-neutral-02 absolute inset-0 overflow-hidden rounded-[40px]",
+                  "border-neutral-03 bg-neutral-02 focus-visible:outline-primary-03 absolute inset-0 overflow-hidden rounded-[40px] border shadow-[0_2px_8px_rgba(0,0,0,0.14)] focus-visible:outline-2 focus-visible:outline-offset-2",
                   isTop
                     ? "cursor-grab active:cursor-grabbing"
                     : "pointer-events-none",
@@ -216,21 +231,35 @@ const PlaceCardDeck = ({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <ImageIcon className="text-neutral-04 h-10 w-10" />
+                  <div className="bg-primary-04 relative flex h-full w-full items-center justify-center overflow-hidden">
+                    <span
+                      aria-hidden="true"
+                      className="border-primary-01/80 absolute -top-16 -right-16 h-64 w-64 rounded-full border-[48px]"
+                    />
+                    <div className="text-neutral-07 relative flex flex-col items-center gap-3">
+                      <ImageIcon className="h-8 w-8" />
+                      <span className="text-[13px] font-semibold">
+                        {place.name}
+                      </span>
+                    </div>
                   </div>
                 )}
 
                 {isTop && (
                   <>
-                    <span className="bg-neutral-01 text-neutral-04 absolute top-5 left-5 rounded-full px-3.5 py-1.5 text-[13px]">
+                    <span className="text-neutral-07 absolute top-5 left-5 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-medium">
                       {place.category}
                     </span>
 
-                    <div className="from-neutral-07/70 absolute inset-x-0 bottom-0 bg-linear-to-t to-transparent px-5 pt-16 pb-6">
-                      <h3 className="text-neutral-01 text-[18px] font-semibold">
+                    <div className="from-neutral-07/90 via-neutral-07/55 absolute inset-x-0 bottom-0 bg-linear-to-t to-transparent px-6 pt-24 pb-6">
+                      <h3 className="text-[20px] font-semibold text-white">
                         {place.name}
                       </h3>
+                      {place.tags[0] && (
+                        <p className="mt-1 text-[13px] text-white/80">
+                          #{place.tags[0]} · 나의 여행 성향 추천
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
@@ -240,30 +269,37 @@ const PlaceCardDeck = ({
         </AnimatePresence>
       </div>
 
-      <div className="relative mt-9 flex w-75 items-center justify-center gap-6">
+      <div className="relative mt-6 flex w-full max-w-[342px] items-center gap-3 pl-14">
         <CircleIconButton
           icon={<Undo className="h-5 w-5" />}
           onClick={onUndo}
           disabled={!canUndo}
           aria-label="되돌리기"
-          className="absolute left-0 h-12 w-12"
+          className="absolute left-0 h-11 w-11"
         />
-        <CircleIconButton
+        <Button
           icon={<Close className="h-6 w-6" />}
           onClick={() => commitSwipe("dislike")}
           disabled={!topPlace}
-          aria-label="싫어요"
-          className="h-15 w-15"
-        />
-        <CircleIconButton
+          aria-label="현재 장소 넘기기"
+          className="flex-1"
+        >
+          넘기기
+        </Button>
+        <Button
           icon={<HeartFilled className="h-6 w-6" />}
-          variant="dark"
+          variant="solid"
           onClick={() => commitSwipe("like")}
           disabled={!topPlace}
-          aria-label="좋아요"
-          className="h-18 w-18"
-        />
+          aria-label="현재 장소 담기"
+          className="flex-1"
+        >
+          담기
+        </Button>
       </div>
+      <p className="text-neutral-04 mt-3 text-center text-[12px]">
+        카드를 누르면 장소 정보를 자세히 볼 수 있어요.
+      </p>
     </div>
   );
 };

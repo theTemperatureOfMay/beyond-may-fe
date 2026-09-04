@@ -1,7 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import useDialogFocus from "@/hooks/useDialogFocus";
 import LocationOff from "@/components/ui/icons/LocationOff";
+import Close from "@/components/ui/icons/Close";
 import type { ExplorationParticipant } from "@/types/exploration";
 
 /** 아바타 배경색 후보 (participantId로 고정 선택) */
@@ -31,35 +33,61 @@ const TeamParticipantsSheet = ({
   isOngoing = true,
   onClose,
 }: TeamParticipantsSheetProps) => {
+  const dialogRef = useDialogFocus<HTMLDivElement>(true, onClose);
+
   return (
     <div className="fixed inset-0 z-50">
       {/* 오버레이 */}
       <div
-        className="absolute inset-0 bg-black/12 backdrop-blur-xl"
+        className="bg-neutral-07/35 absolute inset-0 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
       {/* 시트 */}
-      <div className="bg-white-01 absolute inset-x-0 bottom-0 mx-auto max-w-97.5 rounded-t-2xl px-6 pt-4 pb-4">
-        <div className="bg-neutral-03 mx-auto mb-7.5 h-1 w-10.5 rounded-full" />
-
-        <h2 className="text-neutral-07 text-[18px] font-bold">
-          팀원 {participantCount}명
-        </h2>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="팀원 목록"
+        tabIndex={-1}
+        className="absolute inset-x-0 bottom-0 mx-auto max-w-[430px] rounded-t-[24px] bg-white px-6 pt-6 pb-[max(24px,env(safe-area-inset-bottom))] focus:outline-none"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-neutral-07 text-[20px] font-semibold">
+            함께 걷는 팀원 {participantCount}명
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="팀원 목록 닫기"
+            className="text-neutral-04 focus-visible:outline-primary-03 flex h-11 w-11 items-center justify-center rounded-full"
+          >
+            <Close className="h-4 w-4" />
+          </button>
+        </div>
 
         {isPending && (
-          <p className="text-neutral-04 py-9 text-center text-[16px] font-semibold">
-            팀원을 불러오고 있어요…
+          <p
+            className="text-neutral-04 py-9 text-center text-[14px]"
+            role="status"
+          >
+            팀원을 불러오고 있어요.
           </p>
         )}
 
         {isError && (
-          <p className="text-neutral-04 py-9 text-center text-[16px] font-semibold">
+          <p className="text-neutral-04 py-9 text-center text-[14px]">
             팀원 목록을 불러오지 못했어요.
           </p>
         )}
 
-        {!isPending && !isError && (
+        {!isPending && !isError && participants.length === 0 && (
+          <p className="text-neutral-04 py-9 text-center text-[14px]">
+            아직 참여한 팀원이 없어요.
+          </p>
+        )}
+
+        {!isPending && !isError && participants.length > 0 && (
           <ul className="mt-4 flex flex-col">
             {participants.map((participant) => (
               <li
@@ -68,7 +96,7 @@ const TeamParticipantsSheet = ({
               >
                 <div
                   className={cn(
-                    "text-white-01 flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold",
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold text-white",
                     AVATAR_COLORS[
                       participant.participantId % AVATAR_COLORS.length
                     ],
@@ -99,7 +127,7 @@ const TeamParticipantsSheet = ({
           </ul>
         )}
 
-        <p className="text-neutral-04 mt-4 text-[12px] leading-relaxed">
+        <p className="text-neutral-04 mt-4 text-[12px] leading-[1.5]">
           {isOngoing
             ? "위치 미공유 팀원은 목록엔 노출되지만 지도에는 마커를 표시하지 않습니다."
             : "탐험 전이라 방문 완료 개수는 표시되지 않고 닉네임만 노출됩니다."}

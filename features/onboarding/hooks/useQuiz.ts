@@ -10,8 +10,6 @@ interface UseQuizParams {
 
 interface UseQuizReturn {
   answers: PreferenceAnswer[];
-  /** 화면에 렌더할 문항 (답변 수 + 1개까지만 노출 → 미답변 스킵 차단) */
-  visibleQuestions: PreferenceQuestion[];
   /** 진행률 0~100. 분모는 서버가 준 전체 문항 수 */
   progress: number;
   /** 모든 문항에 답했는지 → 결과 제출 트리거 */
@@ -20,14 +18,14 @@ interface UseQuizReturn {
   getSelectedOption: (questionId: number) => number | null;
   /** 답변 선택/변경 */
   selectAnswer: (questionId: number, optionId: number) => void;
+  replaceAnswers: (answers: PreferenceAnswer[]) => void;
+  clearAnswers: () => void;
 }
 
 /**
  * 성향 검사 진행 상태를 관리.
  *
  * 설계 의도:
- * - "미답변 문항으로 스크롤해 건너뛰기"를 막기 위해, 스크롤을 잠그는 대신
- *   답변한 개수 + 1개까지만 렌더한다. 존재하지 않는 섹션은 스크롤 불가능.
  * - 응답은 questionId 기준으로 갱신하므로, 위로 올라가 이전 답을 바꾸면 덮어쓴다.
  *
  * 참고: 성향 점수 계산은 백엔드 책임이며, 질문은 20개 풀 중 랜덤 선별된
@@ -63,11 +61,6 @@ export const useQuiz = ({ questions }: UseQuizParams): UseQuizReturn => {
 
   const answeredCount = answers.length;
 
-  const visibleQuestions = useMemo(
-    () => questions.slice(0, answeredCount + 1),
-    [questions, answeredCount],
-  );
-
   const progress = useMemo(
     () =>
       questions.length === 0 ? 0 : (answeredCount / questions.length) * 100,
@@ -79,10 +72,11 @@ export const useQuiz = ({ questions }: UseQuizParams): UseQuizReturn => {
 
   return {
     answers,
-    visibleQuestions,
     progress,
     isCompleted,
     getSelectedOption,
     selectAnswer,
+    replaceAnswers: setAnswers,
+    clearAnswers: () => setAnswers([]),
   };
 };

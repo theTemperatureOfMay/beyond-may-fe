@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
+import useDialogFocus from "@/hooks/useDialogFocus";
 import Close from "@/components/ui/icons/Close";
 
 interface SidebarProps {
@@ -19,12 +20,14 @@ interface SidebarProps {
  * children으로 받아 로그인 상태에 따라 호출부(app/page.tsx 등)가 갈아 끼운다.
  */
 const Sidebar = ({ open, onClose, children, className }: SidebarProps) => {
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, onClose);
+
   return (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50">
           <motion.div
-            className="absolute inset-0 bg-black/50"
+            className="bg-neutral-07/50 absolute inset-0 backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -36,15 +39,17 @@ const Sidebar = ({ open, onClose, children, className }: SidebarProps) => {
               데스크톱 브라우저에서 앱 콘텐츠와 어긋나지 않도록 ShareSheet와 동일 패턴 */}
           <div className="relative mx-auto flex h-full max-w-[430px] justify-end">
             <motion.div
+              ref={dialogRef}
               role="dialog"
               aria-modal="true"
               aria-label="메뉴"
+              tabIndex={-1}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "tween", duration: 0.25 }}
               className={cn(
-                "bg-neutral-01 relative flex h-full w-[82%] flex-col px-6 pt-4",
+                "relative flex h-full w-[86%] max-w-[360px] flex-col bg-white px-6 pt-[max(12px,env(safe-area-inset-top))] shadow-[-12px_0_40px_rgba(20,20,20,0.16)] focus:outline-none",
                 className,
               )}
             >
@@ -52,12 +57,14 @@ const Sidebar = ({ open, onClose, children, className }: SidebarProps) => {
                 type="button"
                 onClick={onClose}
                 aria-label="닫기"
-                className="text-neutral-06 cursor-pointer self-end p-2"
+                className="text-neutral-06 hover:bg-neutral-02 focus-visible:outline-primary-03 active:bg-neutral-03 flex h-11 w-11 cursor-pointer items-center justify-center self-end rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
               >
                 <Close className="h-5 w-5" />
               </button>
 
-              <div className="flex-1 overflow-y-auto pb-6">{children}</div>
+              <div className="flex-1 overflow-y-auto pb-[max(24px,env(safe-area-inset-bottom))]">
+                {children}
+              </div>
             </motion.div>
           </div>
         </div>

@@ -47,7 +47,9 @@ const CourseTimeline = ({
   return (
     <div className="flex flex-col">
       {startLabel && (
-        <p className="text-neutral-05 px-6 pt-2 pb-1 text-sm">{startLabel}</p>
+        <p className="text-neutral-04 px-6 pt-2 pb-1 text-[13px]">
+          {startLabel}
+        </p>
       )}
 
       <AnimatePresence initial={false}>

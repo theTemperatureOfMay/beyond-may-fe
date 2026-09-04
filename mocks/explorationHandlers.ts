@@ -1,6 +1,10 @@
 import { http, HttpResponse, delay } from "msw";
 
-import type { ExplorationListResponse } from "@/types/exploration";
+import type {
+  ExplorationListResponse,
+  JoinResponse,
+  StartResponse,
+} from "@/types/exploration";
 
 /**
  * 상태별 탐험 코스 목록 mock (GET /explorations?status=).
@@ -15,6 +19,36 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 const MOCK_HAS_ONGOING_COURSE = false;
 
 export const explorationHandlers = [
+  http.post(`${BASE_URL}/api/v1/courses/:courseId/join`, async () => {
+    await delay(500);
+    const data: JoinResponse = {
+      explorationId: 44,
+      participantId: 73,
+      role: "MEMBER",
+      status: "ACTIVE",
+      displayName: "새 여행자",
+      locationSharingEnabled: false,
+      joinedAt: new Date().toISOString(),
+      alreadyJoined: false,
+    };
+    return HttpResponse.json({ code: "COMMON201", data, message: "팀에 합류했습니다.", success: true });
+  }),
+
+  http.post(
+    `${BASE_URL}/api/v1/explorations/:explorationId/start`,
+    async () => {
+      await delay(600);
+      const data: StartResponse = {
+        explorationId: 44,
+        courseId: 31,
+        status: "ONGOING",
+        participantId: 72,
+        startedAt: new Date().toISOString(),
+      };
+      return HttpResponse.json({ code: "COMMON200", data, message: "탐험을 시작했습니다.", success: true });
+    },
+  ),
+
   http.get(`${BASE_URL}/api/v1/explorations`, async () => {
     await delay(300);
 

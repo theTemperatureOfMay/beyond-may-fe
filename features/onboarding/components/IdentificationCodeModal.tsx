@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Close from "@/components/ui/icons/Close";
@@ -19,8 +21,11 @@ const IdentificationCodeModal = ({
   code,
   onClose,
 }: IdentificationCodeModalProps) => {
-  const handleCopy = () => {
-    navigator.clipboard.writeText(String(code));
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard?.writeText(String(code));
+    setIsCopied(true);
   };
 
   return (
@@ -33,13 +38,13 @@ const IdentificationCodeModal = ({
           type="button"
           onClick={onClose}
           aria-label="닫기"
-          className="text-neutral-05 cursor-pointer p-1"
+          className="text-neutral-04 focus-visible:outline-primary-03 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full"
         >
           <Close className="h-3.5 w-3.5" />
         </button>
       </div>
-      <p className="text-neutral-04 mt-1 text-[13px]">
-        이 코드로 다음에 다시 로그인할 수 있어요
+      <p className="text-neutral-04 mt-2 text-[13px] leading-[1.5]">
+        이 코드를 잃으면 계정을 복구할 수 없어요. 지금 캡처해 두세요.
       </p>
 
       <div className="border-neutral-07 mt-4 flex items-center justify-between rounded-lg border px-4 py-3.5">
@@ -51,17 +56,23 @@ const IdentificationCodeModal = ({
           onClick={handleCopy}
           className="text-neutral-04 cursor-pointer text-[13px]"
         >
-          복사
+          {isCopied ? "복사됨" : "복사"}
         </button>
       </div>
 
+      {isCopied && (
+        <p className="text-primary-08 mt-2 text-[12px]" role="status">
+          식별코드를 클립보드에 복사했어요.
+        </p>
+      )}
+
       <Button
-        variant="outline"
+        variant="solid"
         size="lg"
         className="mt-4 w-full"
         onClick={onClose}
       >
-        닫기
+        확인하고 장소 고르기
       </Button>
     </Modal>
   );
