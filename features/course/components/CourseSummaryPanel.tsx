@@ -59,7 +59,7 @@ const CourseSummaryPanel = ({
             onClick={onDetailClick}
             className="flex-1"
           >
-            코스 일정 보기
+            일정 보기
           </Button>
         )}
         {onConfirmClick && (

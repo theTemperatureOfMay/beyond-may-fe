@@ -126,7 +126,7 @@ const ShareSheet = ({
               </div>
             )}
 
-            <div className="mt-4 max-h-[48dvh] overflow-y-auto rounded-[20px]">
+            <div className="scrollbar-hide mt-4 max-h-[48dvh] overflow-y-auto rounded-[20px]">
               {children}
             </div>
 

@@ -59,6 +59,10 @@ export interface CourseResponse {
   endDate: string; // ISO date
   startTime: string; // "09:00:00"
   places: CoursePlace[];
+  /** CONFIRMED일 때만 존재. 확정 직후 세션 상태에만 의존하면 새로고침·재방문 시
+   *  유실되어 탐험 시작이 막히므로, 조회 응답에도 포함해 그 값을 우선 쓴다.
+   *  TODO(백엔드): 실제 응답 필드명·존재 여부 확인 필요 — collection 미확인. */
+  explorationId: number | null;
 }
 
 /* ── 코스 확정 (3.3.1 / 6번) — collection(_5) 실측 기준 ──
