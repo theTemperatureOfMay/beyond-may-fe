@@ -179,3 +179,21 @@ export interface LocationSharingResponse {
   /** ISO 8601 문자열 */
   updatedAt: string;
 }
+/* ---------------- 주변 장소 추천 (4.4.1) ---------------- */
+
+/** 주변 장소 하나 */
+export interface NearbyPlace {
+  placeId: number;
+  name: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+  /** 현재 위치로부터의 거리(m). 서버 계산값 */
+  distanceMeters: number;
+  thumbnailUrl: string | null;
+}
+
+/** 주변 장소 추천 응답 */
+export interface NearbyPlacesResponse {
+  places: NearbyPlace[];
+}

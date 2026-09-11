@@ -30,6 +30,14 @@ export const QUERY_KEYS = {
       [...QUERY_KEYS.EXPLORATION.ALL, "status", explorationId] as const,
     VISITED_PLACES: (explorationId: string) =>
       [...QUERY_KEYS.EXPLORATION.ALL, "visited-places", explorationId] as const,
+    NEARBY: (explorationId: string, latitude: number, longitude: number) =>
+      [
+        ...QUERY_KEYS.EXPLORATION.ALL,
+        "nearby",
+        explorationId,
+        latitude,
+        longitude,
+      ] as const,
   },
   RECORD: {
     ALL: ["record"] as const,

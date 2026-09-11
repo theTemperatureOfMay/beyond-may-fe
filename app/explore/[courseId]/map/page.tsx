@@ -3,13 +3,22 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGetCourseDetailQuery } from "@/hooks/queries/useGetCourseDetailQuery";
+import { useGetNearbyPlacesQuery } from "@/hooks/queries/useGetNearbyPlacesQuery";
 import { getCourseMapData } from "@/features/course/utils/courseMapAdapter";
 import { toLatLng } from "@/features/explore/utils/toLatLng";
+import { isInGwangju } from "@/lib/geo/gwangju";
+
 import VisitMap from "@/features/explore/components/VisitMap";
 import ExploreHeader from "@/features/explore/components/ExploreHeader";
 import TeamBadge from "@/features/explore/components/TeamBadge";
 import TeamParticipantsSheet from "@/features/explore/components/TeamParticipantsSheet";
+import NearbyPlacesSheet from "@/features/explore/components/NearbyPlacesSheet";
+import NearbyEmptyToast from "@/features/explore/components/NearbyEmptyToast";
 import LocationSharingModal from "@/features/explore/components/LocationSharingModal";
+import { useQueryClient } from "@tanstack/react-query";
+import PlaceDetailContainer from "@/features/explore/components/PlaceDetailContainer";
+import { QUERY_KEYS } from "@/services/constant/queryKey";
+import OutOfGwangjuBanner from "@/features/explore/components/OutOfGwangjuBanner";
 import Sidebar from "@/components/layout/sidebar/Sidebar";
 import SidebarProfileMenu from "@/components/layout/sidebar/SidebarProfileMenu";
 import useGeolocation from "@/features/explore/hooks/useGeolocation";
@@ -37,6 +46,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const [isTeamOpen, setIsTeamOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLocationSharingOpen, setIsLocationSharingOpen] = useState(true);
+  const [isNearbyRequested, setIsNearbyRequested] = useState(false);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
   useGeolocation({ enabled: true });
   const coordinates = useGeolocationStore((state) => state.coordinates);
@@ -56,6 +68,14 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   } = useGetParticipantsQuery(explorationIdStr);
   const { data: explorationStatus } =
     useGetExplorationStatusQuery(explorationIdStr);
+  const { data: nearbyData, isSuccess: isNearbySuccess } =
+    useGetNearbyPlacesQuery({
+      explorationId,
+      latitude: coordinates?.latitude ?? null,
+      longitude: coordinates?.longitude ?? null,
+      enabled: isNearbyRequested,
+    });
+  const nearbyPlaces = nearbyData?.places ?? [];
 
   if (isPending) {
     return (
@@ -91,6 +111,13 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
 
   const participantCount = participants?.participantCount ?? 0;
   const isOngoing = explorationStatus?.status === "ONGOING";
+  // 좌표 있고 + 광주 안일 때만 주변 더보기 가능
+  const canUseNearby = coordinates != null && isInGwangju(coordinates);
+  // 좌표는 있는데 광주 밖 → 안내 배너
+  const isOutOfGwangju = coordinates != null && !isInGwangju(coordinates);
+  // 요청했고 + 성공했고 + 목록 비었으면 토스트
+  const showEmptyToast =
+    isNearbyRequested && isNearbySuccess && nearbyPlaces.length === 0;
 
   return (
     <div className="relative h-dvh w-full">
@@ -110,6 +137,19 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
       >
         코스 보기
       </button>
+
+      {/* 주변 더보기 — 광주 안일 때만 (밖이면 배너로 대체) */}
+      {canUseNearby && (
+        <button
+          type="button"
+          onClick={() => {
+            setIsNearbyRequested(true);
+          }}
+          className="text-neutral-07 focus-visible:outline-primary-03 absolute bottom-20 left-4 z-30 min-h-11 rounded-full bg-white px-4 text-[13px] font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.14)]"
+        >
+          주변 더보기
+        </button>
+      )}
 
       <ExploreHeader
         center={
@@ -142,6 +182,35 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
           onClose={() => setIsLocationSharingOpen(false)}
         />
       )}
+
+      {isNearbyRequested && isNearbySuccess && nearbyPlaces.length > 0 && (
+        <NearbyPlacesSheet
+          places={nearbyPlaces}
+          onSelectPlace={(placeId) => setSelectedPlaceId(placeId)}
+          onClose={() => setIsNearbyRequested(false)}
+        />
+      )}
+
+      {showEmptyToast && (
+        <NearbyEmptyToast onClose={() => setIsNearbyRequested(false)} />
+      )}
+
+      {isOutOfGwangju && <OutOfGwangjuBanner />}
+      <PlaceDetailContainer
+        placeId={selectedPlaceId}
+        explorationId={explorationId}
+        isVisited={
+          selectedPlaceId !== null &&
+          initialVisitedPlaceIds.includes(selectedPlaceId)
+        }
+        onClose={() => setSelectedPlaceId(null)}
+        onVisitSuccess={() => {
+          queryClient.invalidateQueries({
+            queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
+          });
+          setSelectedPlaceId(null);
+        }}
+      />
     </div>
   );
 };

@@ -61,3 +61,7 @@ export const formatRemainingDistance = (meters: number): string => {
   }
   return `약 ${Math.round(meters)}m 남음`;
 };
+
+/** 거리(m)를 도보 시간으로 환산 (보행 80m/분 기준). */
+export const formatWalkingTime = (meters: number): string =>
+  `도보 ${Math.max(1, Math.round(meters / 80))}분`;

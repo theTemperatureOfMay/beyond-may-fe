@@ -7,6 +7,9 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import CourseTimeline from "@/features/course/components/CourseTimeline";
 import { useGetCourseDetailQuery } from "@/hooks/queries/useGetCourseDetailQuery";
+import { useQueryClient } from "@tanstack/react-query";
+import PlaceDetailContainer from "@/features/explore/components/PlaceDetailContainer";
+import { QUERY_KEYS } from "@/services/constant/queryKey";
 import useGetExplorationVisitedPlacesQuery from "@/features/explore/hooks/useGetExplorationVisitedPlacesQuery";
 import useGetExplorationStatusQuery from "@/features/explore/hooks/useGetExplorationStatusQuery";
 import useSessionStore from "@/stores/sessionStore";
@@ -26,6 +29,8 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   const explorationIdStr = explorationId !== null ? String(explorationId) : "";
 
   const [isCompleteOpen, setIsCompleteOpen] = useState(false);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
   const {
     data: course,
@@ -108,9 +113,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
             places={course.places}
             visitedPlaceIds={visitedPlaceIds}
             activePlaceId={activePlaceId}
-            onPlaceClick={() => {
-              // TODO: 장소 상세(4.4.2) 연결 — 탐험 지도 상세와 통합
-            }}
+            onPlaceClick={(place) => setSelectedPlaceId(place.placeId)}
           />
         </div>
       </div>
@@ -152,6 +155,24 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
           </Button>
         </div>
       </Modal>
+      {/* 장소 상세 (4.4.2) */}
+      {explorationId !== null && (
+        <PlaceDetailContainer
+          placeId={selectedPlaceId}
+          explorationId={explorationId}
+          isVisited={
+            selectedPlaceId !== null &&
+            visitedPlaceIds.includes(selectedPlaceId)
+          }
+          onClose={() => setSelectedPlaceId(null)}
+          onVisitSuccess={() => {
+            queryClient.invalidateQueries({
+              queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
+            });
+            setSelectedPlaceId(null);
+          }}
+        />
+      )}
     </main>
   );
 };

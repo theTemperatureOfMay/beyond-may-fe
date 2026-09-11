@@ -59,6 +59,13 @@ export const API_ENDPOINTS = {
     /** 내 위치 공유 설정 변경 (4.3.2) */
     locationSharing: (explorationId: string) =>
       `/api/v1/explorations/${explorationId}/participants/me/location-sharing`,
+    /** 주변 장소 추천 조회 (4.4.1) — GPS 좌표 기준 근처 장소 */
+    nearbyPlaces: (
+      explorationId: string,
+      latitude: number,
+      longitude: number,
+    ) =>
+      `/api/v1/explorations/${explorationId}/nearby-places?latitude=${latitude}&longitude=${longitude}`,
   },
   record: {
     // TODO(백엔드 확인): 경로·페이지네이션 여부 미확정. (backend)

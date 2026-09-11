@@ -11,6 +11,7 @@ import type {
   ExplorationStatusResponse,
   LocationSharingRequest,
   LocationSharingResponse,
+  NearbyPlacesResponse,
 } from "@/types/exploration";
 
 /** 탐험에 합류 (4.1.1). */
@@ -91,6 +92,19 @@ export const patchLocationSharing = async (
   const res = await api.patch<LocationSharingResponse>(
     API_ENDPOINTS.exploration.locationSharing(explorationId),
     body,
+  );
+  return res.data!;
+};
+
+/** 주변 장소 추천 조회 (4.4.1).
+ *  GPS 좌표 기준 근처 장소를 반환. 광주 밖 좌표는 서버가 400. */
+export const getNearbyPlaces = async (
+  explorationId: string,
+  latitude: number,
+  longitude: number,
+): Promise<NearbyPlacesResponse> => {
+  const res = await api.get<NearbyPlacesResponse>(
+    API_ENDPOINTS.exploration.nearbyPlaces(explorationId, latitude, longitude),
   );
   return res.data!;
 };
