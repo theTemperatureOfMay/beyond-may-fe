@@ -28,6 +28,7 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isStartOpen, setIsStartOpen] = useState(false);
+  const [hasStartError, setHasStartError] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const fromHub = from === "hub";
   const {
@@ -79,13 +80,19 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
   };
 
   const handleStart = (requestLocation: boolean): void => {
-    // explorationId는 확정 직후 세션에 저장됨(persist). 다른 기기·스토리지 클리어 시 없을 수 있음.
-    // TODO(백엔드): 확정 코스 조회 응답에 explorationId 포함되면 그 값으로 보완.
-    if (explorationId === null) return;
+    // 코스 조회 응답의 explorationId를 우선 쓴다 — 확정 직후 세션에 저장된 값은
+    // 새로고침·재방문 시 유실될 수 있어 폴백으로만 둔다.
+    const targetExplorationId = course?.explorationId ?? explorationId;
+    if (targetExplorationId === null) {
+      setHasStartError(true);
+      return;
+    }
+    setHasStartError(false);
 
     const goToExplore = () =>
-      startExploration(String(explorationId), {
+      startExploration(String(targetExplorationId), {
         onSuccess: () => router.push(`/explore/${courseId}?stage=ongoing`),
+        onError: () => setHasStartError(true),
       });
 
     if (requestLocation && navigator.geolocation) {
@@ -158,7 +165,14 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
           course.status === "DRAFT" ? () => setIsConfirmOpen(true) : undefined
         }
         onShareClick={isConfirmed ? () => setIsShareOpen(true) : undefined}
-        onStartClick={isConfirmed ? () => setIsStartOpen(true) : undefined}
+        onStartClick={
+          isConfirmed
+            ? () => {
+                setHasStartError(false);
+                setIsStartOpen(true);
+              }
+            : undefined
+        }
         onRedesignClick={
           // TODO(#56 여파): 팀원 수(teamMemberCount)는 코스 응답에 없음(exploration 소관).
           // 명세 3.3.1 "팀원 합류 전에만 재설계" 가드는 participants API 연결 후 복원.
@@ -275,6 +289,14 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
             권한 없이 코스 미리보기
           </Button>
         </div>
+        {hasStartError && (
+          <p
+            className="text-caution-02 mt-3 text-center text-[12px]"
+            role="alert"
+          >
+            탐험을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.
+          </p>
+        )}
       </Modal>
     </>
   );

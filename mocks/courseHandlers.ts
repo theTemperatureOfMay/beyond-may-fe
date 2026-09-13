@@ -119,6 +119,7 @@ const MOCK_COURSE: CourseResponse = {
   endDate: "2026-08-20",
   startTime: "09:00:00",
   places: MOCK_PLACES,
+  explorationId: null,
 };
 
 /** 초안 코스 (추천 코스 지도 3.1.1 — AI 생성 직후, 아직 미확정) */
@@ -134,10 +135,16 @@ const courseOverrides = new Map<number, CourseResponse>();
 /** 코스별 AI 챗봇(POST /chat) 호출 횟수 — 최대 2회까지 remainingRevisions 계산용 */
 const chatCallCounts = new Map<number, number>();
 
+// mock에서는 확정 시 explorationId를 courseId와 동일하게 발급한다(POST /confirm과 동일 규칙).
+// status만 보고 값을 다시 계산해, courseOverrides에 저장된 시점과 무관하게 항상 일치시킨다.
+const withExplorationId = (course: CourseResponse): CourseResponse => ({
+  ...course,
+  explorationId: course.status === "CONFIRMED" ? course.courseId : null,
+});
+
 export const getMockCourse = (courseId: number): CourseResponse => {
   const override = courseOverrides.get(courseId);
-  if (override) return override;
-  return { ...MOCK_COURSE, courseId };
+  return withExplorationId(override ?? { ...MOCK_COURSE, courseId });
 };
 
 /** 성공 래퍼로 감싼다 (collection _5: message·code·data·success) */
@@ -446,7 +453,7 @@ export const courseHandlers = [
     const courseId = Number(params.courseId);
     const override = courseOverrides.get(courseId);
     return HttpResponse.json(
-      wrap(override ?? { ...MOCK_COURSE_DRAFT, courseId }),
+      wrap(withExplorationId(override ?? { ...MOCK_COURSE_DRAFT, courseId })),
     );
   }),
 

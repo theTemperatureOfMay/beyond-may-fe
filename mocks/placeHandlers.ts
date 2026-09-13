@@ -27,7 +27,7 @@ const MOCK_PLACE_DETAILS: Record<number, PlaceDetailResponse> = {
     businessHours: "24시간 개방",
     description:
       "5·18 민주화운동의 정신을 기리기 위해 조성된 공원으로, 산책로와 기념 조형물이 있다.",
-    thumbnailUrl: "/images/place.jpg",
+    thumbnailUrl: null,
   },
   6: {
     placeId: 6,
@@ -41,7 +41,7 @@ const MOCK_PLACE_DETAILS: Record<number, PlaceDetailResponse> = {
     businessHours: "10:00–18:00",
     description:
       "책과 전시 자료를 천천히 둘러보며 쉬어갈 수 있는 국립아시아문화전당의 열린 공간이다.",
-    thumbnailUrl: "/images/place.jpg",
+    thumbnailUrl: null,
   },
   7: {
     placeId: 7,
@@ -55,7 +55,7 @@ const MOCK_PLACE_DETAILS: Record<number, PlaceDetailResponse> = {
     businessHours: "24시간 개방",
     description:
       "광주천을 따라 억새와 도심 풍경을 함께 바라보며 걷기 좋은 산책길이다.",
-    thumbnailUrl: "/images/place.jpg",
+    thumbnailUrl: null,
   },
   8: {
     placeId: 8,
@@ -69,7 +69,7 @@ const MOCK_PLACE_DETAILS: Record<number, PlaceDetailResponse> = {
     businessHours: null,
     description:
       "오래된 골목 사이로 개성 있는 카페와 디저트 가게가 이어지는 동명동의 대표 거리다.",
-    thumbnailUrl: "/images/place.jpg",
+    thumbnailUrl: null,
   },
   101: {
     placeId: 101,
@@ -215,7 +215,7 @@ EXTRA_MOCK_PLACE_SEEDS.forEach(
       longitude,
       businessHours: index % 4 === 0 ? null : "10:00–18:00",
       description: `${name}에서 광주의 서로 다른 시간과 풍경을 천천히 만나보세요.`,
-      thumbnailUrl: "/images/place.jpg",
+      thumbnailUrl: null,
     };
   },
 );
