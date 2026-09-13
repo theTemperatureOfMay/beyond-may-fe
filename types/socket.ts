@@ -1,58 +1,72 @@
 /**
  * 팀 탐험 실시간 통신 계약 (STOMP).
- * 백엔드 확정 반영.
  *
- * 연결: CONNECT /ws (SockJS 미사용), 인증은 CONNECT 프레임 헤더에 Authorization: Bearer
+ * 연결: CONNECT /ws, 인증은 CONNECT 프레임 헤더에 Authorization: Bearer
  * 구독(SUBSCRIBE): /topic/explorations/{explorationId}/{visits|locations|events}
  * 발행(SEND): /app/explorations/{explorationId}/locations
  * 표기: camelCase
  *
- * STOMP 메시지는 문자열(body)로 오고 가므로, 아래 타입은 JSON.parse/stringify 대상의 형태를 정의.
+ * 모든 구독 이벤트는 공통 봉투 구조로 온다:
+ * { eventId, eventType, explorationId, occurredAt, data: {...} }
+ * occurredAt/data 내 타임스탬프는 REST와 동일하게 ISO 8601 문자열이다
+ * (epoch milliseconds 아님 — 기존 가정 정정).
  */
 
-/* ---------------- 구독 수신 payload (/topic/...) ---------------- */
+interface SocketEventEnvelope<TType extends string, TData> {
+  eventId: string;
+  eventType: TType;
+  explorationId: number;
+  occurredAt: string;
+  data: TData;
+}
 
-/**
- * 방문 인증 전파 (/topic/explorations/{id}/visits).
- * 소켓 payload 날짜는 epoch milliseconds.
- */
+/* ---------------- 구독 수신 payload (/topic/.../visits) ---------------- */
 
-export interface VisitConfirmedPayload {
+export interface VisitConfirmedData {
+  visitId: number;
+  participantId: number;
+  displayName: string;
   placeId: number;
-  userId: number;
-  displayName: string;
-  visitedAt: number;
+  coursePlaceId: number | null;
+  visitedAt: string;
+  teamFirstVisit: boolean;
+  courseProgress: {
+    completedCoursePlaceCount: number;
+    totalCoursePlaceCount: number;
+    completionRate: number;
+  };
+  explorationStatus: string;
 }
+export type VisitConfirmedPayload = SocketEventEnvelope<"VISIT_CONFIRMED", VisitConfirmedData>;
 
-/** 팀원 개인 진행상태 갱신 (/topic/.../events 또는 visits 파생) */
-export interface MemberProgressPayload {
-  userId: number;
+/* ---------------- 구독 수신 payload (/topic/.../locations) ---------------- */
+
+export interface LocationUpdatedData {
+  participantId: number;
   displayName: string;
-  visitedCount: number;
-}
-
-/** 팀원 위치 (/topic/explorations/{id}/locations) */
-export interface MemberLocationPayload {
-  userId: number;
   latitude: number;
   longitude: number;
+  accuracyMeters: number;
+  recordedAt: string;
 }
+export type MemberLocationPayload = SocketEventEnvelope<"LOCATION_UPDATED", LocationUpdatedData>;
 
-/** 팀원 합류/상태 이벤트 (/topic/explorations/{id}/events) */
-export interface MemberPresencePayload {
-  userId: number;
-  displayName: string;
+/* ---------------- 구독 수신 payload (/topic/.../events) ---------------- */
+
+export interface LocationSharingChangedData {
+  participantId: number;
+  enabled: boolean;
 }
+export type LocationSharingChangedPayload = SocketEventEnvelope<
+  "LOCATION_SHARING_CHANGED",
+  LocationSharingChangedData
+>;
 
-/** 재연결 시 현재 탐험 전체 상태 스냅샷 */
-export interface ExplorationStatePayload {
-  visitedPlaceIds: number[];
-  members: MemberProgressPayload[];
-}
+/** events 토픽에서 오는 이벤트 종류가 늘어나면 여기 유니언에 추가 (예: 팀원 합류) */
+export type MemberPresencePayload = LocationSharingChangedPayload;
 
-/* ---------------- 발행 송신 payload (/app/...) ---------------- */
+/* ---------------- 발행 송신 payload (/app/.../locations) ---------------- */
 
-/** 내 위치 전송 (/app/explorations/{id}/locations) */
 export interface LocationUpdatePayload {
   latitude: number;
   longitude: number;

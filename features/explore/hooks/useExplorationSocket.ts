@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { IMessage } from "@stomp/stompjs";
+import type { StompSubscription } from "@stomp/stompjs";
 import { connectClient, disconnectClient, publishMessage } from "@/lib/socket";
 import type {
   VisitConfirmedPayload,
@@ -39,6 +40,8 @@ const useExplorationSocket = ({
     onEventRef.current = onEvent;
   }, [onVisit, onLocation, onEvent]);
 
+  const subscriptionsRef = useRef<StompSubscription[]>([]);
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -47,7 +50,8 @@ const useExplorationSocket = ({
     const client = connectClient(token);
 
     client.onConnect = () => {
-      client.subscribe(
+      subscriptionsRef.current.forEach((sub) => sub.unsubscribe());
+      const visitSub = client.subscribe(
         `/topic/explorations/${explorationId}/visits`,
         (message: IMessage) => {
           onVisitRef.current?.(
@@ -56,7 +60,7 @@ const useExplorationSocket = ({
         },
       );
 
-      client.subscribe(
+      const locationSub = client.subscribe(
         `/topic/explorations/${explorationId}/locations`,
         (message: IMessage) => {
           onLocationRef.current?.(
@@ -65,7 +69,7 @@ const useExplorationSocket = ({
         },
       );
 
-      client.subscribe(
+      const eventSub = client.subscribe(
         `/topic/explorations/${explorationId}/events`,
         (message: IMessage) => {
           onEventRef.current?.(
@@ -73,17 +77,24 @@ const useExplorationSocket = ({
           );
         },
       );
+
+      subscriptionsRef.current = [visitSub, locationSub, eventSub];
     };
 
     return () => {
+      subscriptionsRef.current.forEach((sub) => sub.unsubscribe());
+      subscriptionsRef.current = [];
       disconnectClient();
     };
   }, [enabled, explorationId, token]);
 
   // 내 위치 발행
-  const sendLocation = (payload: LocationUpdatePayload): void => {
-    publishMessage(`/app/explorations/${explorationId}/locations`, payload);
-  };
+  const sendLocation = useCallback(
+    (payload: LocationUpdatePayload): void => {
+      publishMessage(`/app/explorations/${explorationId}/locations`, payload);
+    },
+    [explorationId],
+  );
 
   return { sendLocation };
 };
