@@ -95,7 +95,7 @@ const AppHeader = ({
         </button>
       ) : showHome ? (
         <Link
-          href="/"
+          href="/?home=1"
           aria-label="홈으로 이동"
           className="focus-visible:outline-primary-03 flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
         >

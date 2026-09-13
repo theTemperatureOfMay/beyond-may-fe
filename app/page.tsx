@@ -30,11 +30,12 @@ const FRAME_COUNT = 4;
 const FINAL_DESIGN_FRAME_PROGRESS = 2 / 3;
 
 interface HomePageProps {
-  searchParams: Promise<{ session?: string }>;
+  searchParams: Promise<{ session?: string; home?: string }>;
 }
 
 const HomePage = ({ searchParams }: HomePageProps) => {
-  const { session } = use(searchParams);
+  const { session, home } = use(searchParams);
+  const isExplicitHomeVisit = home === "1";
   const hasExpiredSession = session === "expired";
   const [isMenuOpen, setIsMenuOpen] = useState(hasExpiredSession);
   const [isFinalFrame, setIsFinalFrame] = useState(false);
@@ -76,6 +77,7 @@ const HomePage = ({ searchParams }: HomePageProps) => {
     }
 
     if (!isLoggedIn) return; // 세션 없음 → 이 화면 유지
+    if (isExplicitHomeVisit) return; // 홈 버튼으로 명시적 방문 → 자동 이동 skip
     if (isCheckingCourse) return; // 조회 완료 후 분기
 
     hasGuardNavigated.current = true;
@@ -93,6 +95,7 @@ const HomePage = ({ searchParams }: HomePageProps) => {
     isCourseCheckError,
     ongoingExplorations,
     router,
+    isExplicitHomeVisit,
   ]);
 
   const { scrollYProgress } = useScroll({ container: scrollRef });

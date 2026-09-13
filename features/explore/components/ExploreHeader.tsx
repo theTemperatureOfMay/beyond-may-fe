@@ -42,7 +42,7 @@ const ExploreHeader = ({
         </button>
       ) : (
         <Link
-          href="/"
+          href="/?home=1"
           aria-label="홈으로 이동"
           className="focus-visible:outline-primary-03 pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.14)]"
         >
