@@ -61,7 +61,7 @@ AI 코딩 어시스턴트(Claude, Gemini, Cursor 등)가 이 프로젝트에서 
   (이유: 함수에서 code·message를 확인해야 하므로 data까지 벗기지 않음)
 - 요청 인터셉터: 세션 토큰 자동 첨부 (Authorization: Bearer {token}) / 응답 인터셉터: 공통 에러 + 401 처리
 - 백엔드 응답 키는 camelCase (placeImg, visitedAt). 타입도 camelCase로 맞춤
-- 날짜: REST 응답은 ISO 8601 문자열(예: 2026-08-15T14:32:10+09:00), 소켓 payload는 epoch milliseconds(number)
+- 날짜: REST·소켓 payload 모두 ISO 8601 문자열(예: 2026-08-15T14:32:10+09:00) — 소켓도 epoch ms 아님 
 - 화면 표시는 date-fns로 변환
 
 ## React Query 규칙 (v5 객체 문법)
@@ -165,7 +165,7 @@ git checkout -b type/이슈번호-설명
 - A/B/C가 주고받는 공유 타입(지도 props, 소켓 이벤트, 방문 데이터 등)은
   types/에 정의하고 "계약"으로 취급한다. 계약 변경 시 관련 담당자와 합의 후 수정한다.
 - 백엔드 응답은 공통 래퍼 ApiResponse<T>({ code, data, message })를 전제로 한다.
-- 응답 키는 camelCase. 날짜는 REST 응답은 ISO 8601 문자열, 소켓 payload는 epoch milliseconds(number).
+- 응답 키는 camelCase. 날짜는 REST·소켓 payload 모두 ISO 8601 문자열.
 - 백엔드와 주고받는 타입은 API 응답 예시(JSON)를 근거로 정의한다.
 
 ## 3. 구현 순서
