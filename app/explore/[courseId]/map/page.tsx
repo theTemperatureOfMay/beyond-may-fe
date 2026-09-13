@@ -1,12 +1,13 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useGetCourseDetailQuery } from "@/hooks/queries/useGetCourseDetailQuery";
 import { useGetNearbyPlacesQuery } from "@/hooks/queries/useGetNearbyPlacesQuery";
 import { getCourseMapData } from "@/features/course/utils/courseMapAdapter";
 import { toLatLng } from "@/features/explore/utils/toLatLng";
 import { isInGwangju } from "@/lib/geo/gwangju";
+import { getDistanceInMeters } from "@/lib/geo/distance";
 
 import useExplorationSocket from "@/features/explore/hooks/useExplorationSocket";
 import VisitMap from "@/features/explore/components/VisitMap";
@@ -76,16 +77,27 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
     },
   });
 
-  // 내 위치를 팀에 발행 (GPS 좌표 변경 시)
+  const lastSentLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+ 
+  // 내 위치를 팀에 발행 (GPS 좌표 변경 시, 10m 이상 이동했을 때만)
   useEffect(() => {
-    if (coordinates && explorationId !== null) {
-      sendLocation({
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        accuracyMeters: coordinates.accuracy,
-        recordedAt: new Date().toISOString(),
-      });
-    }
+    if (!coordinates || explorationId === null) return;
+ 
+    const hasMovedEnough =
+      !lastSentLocationRef.current ||
+      getDistanceInMeters(lastSentLocationRef.current, coordinates) >= 10;
+    if (!hasMovedEnough) return;
+ 
+    lastSentLocationRef.current = {
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+    };
+    sendLocation({
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      accuracyMeters: coordinates.accuracy,
+      recordedAt: new Date().toISOString(),
+    });
   }, [coordinates, explorationId, sendLocation]);
 
   const {

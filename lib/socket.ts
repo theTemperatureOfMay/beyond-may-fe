@@ -42,6 +42,7 @@ export const disconnectClient = (): void => {
   if (client?.active) {
     client.deactivate();
   }
+  client = null;
 };
 
 /** STOMP 메시지 발행 (SEND). destination에 JSON body 전송. */
