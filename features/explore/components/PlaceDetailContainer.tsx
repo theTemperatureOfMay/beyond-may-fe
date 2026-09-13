@@ -2,7 +2,7 @@
 
 import PlaceDetailSheet from "@/components/place-detail/PlaceDetailSheet";
 import VisitFooter from "@/features/explore/components/VisitFooter";
-import useGetPlaceDetailQuery from "@/features/places/hooks/useGetPlaceDetailQuery";
+import useGetPlaceDetailQuery from "@/features/explore/hooks/useGetPlaceDetailQuery";
 import type { VisitResponse } from "@/types/exploration";
 
 interface PlaceDetailContainerProps {

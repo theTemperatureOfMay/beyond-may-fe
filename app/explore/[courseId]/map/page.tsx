@@ -156,11 +156,11 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   return (
     <div className="relative h-dvh w-full">
       <VisitMap
-        explorationId={explorationId}
         places={course.places}
         center={myLocation ?? center}
         myLocation={myLocation}
-        initialVisitedPlaceIds={initialVisitedPlaceIds}
+        visitedPlaceIds={initialVisitedPlaceIds}
+        onMarkerClick={setSelectedPlaceId}
       />
 
       {/* 코스 보기 → 코스 상세 타임라인(4.3.4) */}
