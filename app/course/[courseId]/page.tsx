@@ -15,6 +15,9 @@ import useSessionStore from "@/stores/sessionStore";
 import { getCourses } from "@/services/api/course/courseApi";
 import { getExplorationStatus } from "@/services/api/exploration/explorationApi";
 import { QUERY_KEYS } from "@/services/constant/queryKey";
+import { getApiCode, getApiErrorData } from "@/services/lib/axios";
+import DuplicateExplorationState from "@/features/explore/components/DuplicateExplorationState";
+import type { DuplicateExplorationErrorData } from "@/types/exploration";
 
 interface CoursePageProps {
   params: Promise<{ courseId: string }>;
@@ -34,6 +37,8 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
   const [isStartOpen, setIsStartOpen] = useState(false);
   const [hasStartError, setHasStartError] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [duplicateData, setDuplicateData] =
+    useState<DuplicateExplorationErrorData | null>(null);
   const fromHub = from === "hub";
   const {
     data: course,
@@ -89,6 +94,30 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
       onSuccess: () => {
         setIsConfirmOpen(false);
         void refetch();
+      },
+      onError: (error) => {
+        const code = getApiCode(error);
+        // 이미 다른 활성 탐험 참여 중 → 기존 탐험 이동/이탈 후 재확정
+        if (code === "EXPLORATION409") {
+          const data = getApiErrorData<DuplicateExplorationErrorData>(error);
+          if (data) {
+            setIsConfirmOpen(false);
+            setDuplicateData(data);
+            return;
+          }
+        }
+        // 이미 확정된 코스 → 확정 상태로 갱신(다음 화면)
+        if (code === "COURSE409") {
+          setIsConfirmOpen(false);
+          void refetch();
+          return;
+        }
+        // 없는 코스 → 재시도 무의미, 새로 만들기로
+        if (code === "COURSE404") {
+          router.replace("/places");
+          return;
+        }
+        // 그 외 → 기존 generic 에러(hasConfirmError) 유지
       },
     });
   };
@@ -290,6 +319,16 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
           </p>
         )}
       </Modal>
+
+      {duplicateData && (
+        <DuplicateExplorationState
+          activeExplorationId={duplicateData.activeExplorationId}
+          onLeaveSuccess={() => {
+            setDuplicateData(null);
+            handleConfirmCourse();
+          }}
+        />
+      )}
 
       <Modal open={isShareOpen} onClose={() => setIsShareOpen(false)}>
         <p className="text-primary-08 text-[12px] font-semibold tracking-[0.1em]">
