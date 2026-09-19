@@ -6,6 +6,8 @@ export interface TravelRecordPlace {
   name: string;
   summary: string;
   visitedAt: string;
+  /** 장소 유형(THINKER 등). 여행 기록 상단 색을 정하는 데 쓴다. 없으면 기본 색 */
+  travelMbtiType?: string;
 }
 
 export interface TravelRecord {

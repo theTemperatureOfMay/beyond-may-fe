@@ -76,6 +76,7 @@ const RecordDetailPage = ({ params }: RecordDetailPageProps) => {
       name: visit.place.name,
       summary: visit.place.category,
       visitedAt: visit.visitedAt,
+      travelMbtiType: visit.place.travelMbtiType,
     })),
   };
 

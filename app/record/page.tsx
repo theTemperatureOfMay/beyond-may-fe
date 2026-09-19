@@ -7,6 +7,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import ChevronRight from "@/components/ui/icons/ChevronRight";
 import useGetExplorationsQuery from "@/features/explore/hooks/useGetExplorationsQuery";
 import { formatRecordDate } from "@/features/record/mockRecords";
+import { getJourneyGradient } from "@/features/record/utils/journeyGradient";
 import { useQueries } from "@tanstack/react-query";
 import { getTeamVisits } from "@/services/api/record/recordApi";
 import { QUERY_KEYS } from "@/services/constant/queryKey";
@@ -91,6 +92,14 @@ const RecordPage = ({ searchParams }: RecordPageProps) => {
       );
 
   const stateSuffix = isEmpty ? "&state=empty" : "";
+
+  /** 완료 카드 썸네일 색을 정하려고, 그 탐험에서 밝힌 장소들의 유형을 모은다. */
+  const getVisitedTypes = (explorationId: number): string[] => {
+    const index = explorationIds.indexOf(String(explorationId));
+    return (visitQueries[index]?.data?.visits ?? []).map(
+      (visit) => visit.place.travelMbtiType,
+    );
+  };
 
   return (
     <main className="bg-neutral-01 mx-auto min-h-dvh w-full max-w-[430px] pb-[max(40px,env(safe-area-inset-bottom))]">
@@ -266,18 +275,19 @@ const RecordPage = ({ searchParams }: RecordPageProps) => {
             !isCompletedError &&
             completedExplorations.length > 0 && (
               <div className="mt-4 space-y-4">
-                {completedExplorations.map((exploration, index) => (
+                {completedExplorations.map((exploration) => (
                   <Link
                     key={exploration.explorationId}
                     href={`/record/${exploration.explorationId}`}
                     className="border-neutral-03 block overflow-hidden rounded-[24px] border bg-white shadow-[0_8px_28px_rgba(20,20,20,0.06)]"
                   >
                     <div
-                      className={`relative h-28 overflow-hidden ${
-                        index === 0
-                          ? "bg-[linear-gradient(145deg,#BFBaff_0%,#fce9e3_58%,#ffb274_100%)]"
-                          : "bg-[linear-gradient(145deg,#b7caff_0%,#efebfc_55%,#ecf4a2_120%)]"
-                      }`}
+                      className="relative h-28 overflow-hidden"
+                      style={{
+                        backgroundImage: getJourneyGradient(
+                          getVisitedTypes(exploration.explorationId),
+                        ),
+                      }}
                     >
                       <span className="absolute top-4 left-4 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-semibold">
                         완주

@@ -12,6 +12,8 @@ interface HeroTheme {
   strong: string;
   /** 하단 흰색 페이드 유무 */
   fade: boolean;
+  /** 수평선 아래 영역의 [위(진함), 아래(밝음)] 색. 없으면(default) 빛줄기가 그 역할을 한다 */
+  horizon: readonly [string, string] | null;
   /** 동심원 위쪽의 진한 끝색 (아래로 갈수록 투명한 흰색으로 이어진다) */
   glow: string;
   /** 동심원 중앙의 "태양" 점 */
@@ -21,7 +23,7 @@ interface HeroTheme {
 }
 
 /** hex 색을 흰색과 섞는다. ratio 0 = 원색, 1 = 흰색. */
-const mixWithWhite = (hex: string, ratio: number): string => {
+export const mixWithWhite = (hex: string, ratio: number): string => {
   const value = hex.replace("#", "");
   const channels = [0, 2, 4].map((offset) =>
     parseInt(value.slice(offset, offset + 2), 16),
@@ -33,6 +35,11 @@ const mixWithWhite = (hex: string, ratio: number): string => {
   );
   return `#${mixed.join("")}`;
 };
+
+const createHorizon = (accent: string): HeroTheme["horizon"] => [
+  accent,
+  mixWithWhite(accent, 0.92),
+];
 
 const createFinish = (accent: string): HeroTheme["finish"] => [
   mixWithWhite(accent, 0.35),
@@ -55,6 +62,7 @@ const HERO_THEMES: Record<HeroThemeKey, HeroTheme> = {
     blobs: null,
     strong: "#E74D22",
     fade: false,
+    horizon: null,
     glow: "#BFBAFF",
     sun: "#E74D22",
     finish: ["#BFBAFF", "#EFEBFC", "#FCE9E3", "#F9D4C9", "#FFFCFC"],
@@ -74,6 +82,7 @@ const HERO_THEMES: Record<HeroThemeKey, HeroTheme> = {
     ],
     strong: "#FF7C25",
     fade: true,
+    horizon: createHorizon("#FFBF8B"),
     glow: "#FFBF8B",
     sun: "#E74D22",
     finish: createFinish("#FFBF8B"),
@@ -93,9 +102,10 @@ const HERO_THEMES: Record<HeroThemeKey, HeroTheme> = {
     ],
     strong: "#7C25FF",
     fade: true,
+    horizon: createHorizon("#D7A8FF"),
     glow: "#D7A8FF",
     sun: "#A07EEA",
-    finish: createFinish("#B773FF"),
+    finish: createFinish("#D7A8FF"),
   },
   THINKER: {
     base: "#98E3FF",
@@ -112,28 +122,30 @@ const HERO_THEMES: Record<HeroThemeKey, HeroTheme> = {
     ],
     strong: "#2550FF",
     fade: true,
+    horizon: createHorizon("#8DBBFF"),
     glow: "#8DBBFF",
     sun: "#4D7AE4",
-    finish: createFinish("#7392FF"),
+    finish: createFinish("#8DBBFF"),
   },
   ARTIST: {
     base: "#D4FF98",
     blobs: [
-      "#7CE05A",
-      "#A0F08A",
-      "#C9FFAA",
-      "#E4FFC1",
-      "#B8F0A0",
-      "#8FE870",
-      "#E2FFD1",
-      "#D2FBC3",
-      "#56C93F",
+      "#9BE070",
+      "#D2F57A",
+      "#E6FFA8",
+      "#F1FFB8",
+      "#C4EE8A",
+      "#B3E86A",
+      "#EEF8B8",
+      "#DCF9A8",
+      "#7CD44A",
     ],
-    strong: "#2EB82B",
+    strong: "#4DBF35",
     fade: true,
-    glow: "#B5F08F",
-    sun: "#A4DD62",
-    finish: createFinish("#7CE05A"),
+    horizon: createHorizon("#C6EE8C"),
+    glow: "#C6EE8C",
+    sun: "#ECF4A2",
+    finish: createFinish("#C6EE8C"),
   },
 };
 

@@ -25,9 +25,8 @@ import useSessionStore from "@/stores/sessionStore";
 
 /** 세 시안을 보여준 뒤 한 번 더 스크롤하면 기존 온보딩으로 이동한다. */
 const FRAME_COUNT = 4;
-/** 기본(메인) 배경은 주황이라 스크롤하면 글자가 연회색으로 바뀌고, 유형 테마는 밝은 배경이라 계속 진하게 둔다. */
-const DEFAULT_TEXT_COLORS = ["#141414", "#BEC2C0", "#BEC2C0"];
-const THEMED_TEXT_COLORS = ["#141414", "#141414", "#141414"];
+/** 스크롤하면 글자가 연회색으로 바뀐다. 메인과 유형 테마 모두 같다. */
+const TEXT_COLORS = ["#141414", "#BEC2C0", "#BEC2C0"];
 const FINAL_DESIGN_FRAME_PROGRESS = 2 / 3;
 
 interface HomePageProps {
@@ -76,11 +75,7 @@ const HomePage = ({ searchParams }: HomePageProps) => {
     [0, 0.5, 1],
   );
 
-  const textColor = useTransform(
-    visualProgress,
-    [0, 0.5, 1],
-    preferenceType ? THEMED_TEXT_COLORS : DEFAULT_TEXT_COLORS,
-  );
+  const textColor = useTransform(visualProgress, [0, 0.5, 1], TEXT_COLORS);
   const subtitleTop = useTransform(
     visualProgress,
     [0, 0.5, 1],
@@ -135,6 +130,7 @@ const HomePage = ({ searchParams }: HomePageProps) => {
           <GradientBackground
             progress={visualProgress}
             theme={preferenceType ?? "default"}
+            horizon
           />
 
           <AppHeader
