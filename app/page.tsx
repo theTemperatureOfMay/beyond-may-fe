@@ -25,6 +25,9 @@ import useSessionStore from "@/stores/sessionStore";
 
 /** 세 시안을 보여준 뒤 한 번 더 스크롤하면 기존 온보딩으로 이동한다. */
 const FRAME_COUNT = 4;
+/** 기본(메인) 배경은 주황이라 스크롤하면 글자가 연회색으로 바뀌고, 유형 테마는 밝은 배경이라 계속 진하게 둔다. */
+const DEFAULT_TEXT_COLORS = ["#141414", "#BEC2C0", "#BEC2C0"];
+const THEMED_TEXT_COLORS = ["#141414", "#141414", "#141414"];
 const FINAL_DESIGN_FRAME_PROGRESS = 2 / 3;
 
 interface HomePageProps {
@@ -73,6 +76,11 @@ const HomePage = ({ searchParams }: HomePageProps) => {
     [0, 0.5, 1],
   );
 
+  const textColor = useTransform(
+    visualProgress,
+    [0, 0.5, 1],
+    preferenceType ? THEMED_TEXT_COLORS : DEFAULT_TEXT_COLORS,
+  );
   const subtitleTop = useTransform(
     visualProgress,
     [0, 0.5, 1],
@@ -156,14 +164,14 @@ const HomePage = ({ searchParams }: HomePageProps) => {
           </motion.button>
 
           <motion.p
-            style={{ top: subtitleTop }}
+            style={{ top: subtitleTop, color: textColor }}
             className="text-neutral-07 absolute left-[7.7%] text-[20px] leading-none font-medium tracking-[0.12em]"
           >
             광주 동행 지도
           </motion.p>
 
           <motion.h1
-            style={{ top: titleTop }}
+            style={{ top: titleTop, color: textColor }}
             className="text-neutral-07 absolute left-[7.2%] text-[64px] leading-[1.18] font-bold tracking-[-0.035em]"
           >
             5월 너머의

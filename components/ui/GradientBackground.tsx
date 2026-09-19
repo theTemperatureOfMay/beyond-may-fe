@@ -81,11 +81,12 @@ interface BlobLayerProps {
 }
 
 /**
- * 블러 처리한 컬러 블롭 배경. 스크롤 연출과 무관한 정적 레이어라 별도 svg로 분리해
+ * 블러 처리한 컬러 블롭 배경(블롭이 없는 테마는 바탕색만). 스크롤 연출과 무관한 정적 레이어라 별도 svg로 분리해
  * 블러 결과가 한 번만 계산·캐시되게 한다(동심원이 움직일 때마다 재계산되지 않도록).
  */
 const BlobLayer = memo(({ theme }: BlobLayerProps) => {
   const filterId = useId();
+  const { blobs } = theme;
 
   return (
     <svg
@@ -94,37 +95,40 @@ const BlobLayer = memo(({ theme }: BlobLayerProps) => {
       preserveAspectRatio="xMidYMin slice"
       className="absolute inset-0 h-full w-full"
     >
-      <defs>
-        <filter
-          id={filterId}
-          filterUnits="userSpaceOnUse"
-          colorInterpolationFilters="sRGB"
-          {...BLUR_REGION}
-        >
-          <feGaussianBlur stdDeviation={BLOB_BLUR} />
-        </filter>
-      </defs>
-
       <rect width={VIEW_WIDTH} height={VIEW_HEIGHT} fill={theme.base} />
 
-      {BLOB_PATHS.map((path, index) => (
-        <path
-          key={path}
-          d={path}
-          fill={theme.blobs[index]}
-          filter={`url(#${filterId})`}
-        />
-      ))}
-      {STRONG_ELLIPSES.map((ellipse) => (
-        <ellipse
-          key={`${ellipse.cx}-${ellipse.cy}`}
-          cx={ellipse.cx}
-          cy={ellipse.cy}
-          {...STRONG_ELLIPSE_RADIUS}
-          fill={theme.strong}
-          filter={`url(#${filterId})`}
-        />
-      ))}
+      {blobs && (
+        <>
+          <defs>
+            <filter
+              id={filterId}
+              filterUnits="userSpaceOnUse"
+              colorInterpolationFilters="sRGB"
+              {...BLUR_REGION}
+            >
+              <feGaussianBlur stdDeviation={BLOB_BLUR} />
+            </filter>
+          </defs>
+          {BLOB_PATHS.map((path, index) => (
+            <path
+              key={path}
+              d={path}
+              fill={blobs[index]}
+              filter={`url(#${filterId})`}
+            />
+          ))}
+          {STRONG_ELLIPSES.map((ellipse) => (
+            <ellipse
+              key={`${ellipse.cx}-${ellipse.cy}`}
+              cx={ellipse.cx}
+              cy={ellipse.cy}
+              {...STRONG_ELLIPSE_RADIUS}
+              fill={theme.strong}
+              filter={`url(#${filterId})`}
+            />
+          ))}
+        </>
+      )}
     </svg>
   );
 });
@@ -136,7 +140,7 @@ BlobLayer.displayName = "BlobLayer";
  *
  * 구성:
  * - 블러 블롭 배경(BlobLayer) 위에 동심원·빛줄기·태양이 스크롤에 따라 위로 이동하며 사라짐
- * - 하단은 흰색으로 페이드되어 본문/버튼 영역과 자연스럽게 이어짐
+ * - 유형 테마는 하단이 흰색으로 페이드되어 본문/버튼 영역과 자연스럽게 이어짐
  * - theme로 성향 유형별 색을 바꾼다(미지정 = 시안 원본)
  * - progress가 없는 정적 사용처(QuizIntro, 결과 로딩 등)는 첫 프레임 그대로 노출
  * - prefers-reduced-motion 사용자는 progress와 무관하게 첫 프레임 고정
@@ -204,12 +208,14 @@ const GradientBackground = ({
           </linearGradient>
         </defs>
 
-        <rect
-          y="609"
-          width={VIEW_WIDTH}
-          height="259"
-          fill={`url(#${fadeId})`}
-        />
+        {heroTheme.fade && (
+          <rect
+            y="609"
+            width={VIEW_WIDTH}
+            height="259"
+            fill={`url(#${fadeId})`}
+          />
+        )}
 
         {showStatic ? (
           <path
