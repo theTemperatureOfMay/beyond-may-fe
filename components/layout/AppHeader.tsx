@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/cn";
+import { hasAppHistory } from "@/lib/appHistory";
 import Home from "@/components/ui/icons/Home";
 import ChevronLeft from "@/components/ui/icons/ChevronLeft";
 import Hamburger from "@/components/ui/icons/Hamburger";
@@ -23,7 +24,7 @@ interface AppHeaderProps {
   showMenu?: boolean;
   /** 홈처럼 좌측 이동 액션이 없는 화면에서는 false로 숨긴다. */
   showHome?: boolean;
-  /** 방문 기록의 이전 화면으로 이동한다. 기록이 없으면 홈으로 이동한다. */
+  /** 앱 안의 이전 화면으로 이동한다. 앱 안에 이전 화면이 없으면(직접 접속 등) 홈으로 이동한다. */
   showBack?: boolean;
   /** 명시적 상위 경로. showBack과 함께 쓰면 이전 기록이 없을 때의 복귀 경로다. */
   backHref?: string;
@@ -68,7 +69,8 @@ const AppHeader = ({
 }: AppHeaderProps) => {
   const router = useRouter();
   const handleBack = () => {
-    if (window.history.length > 1) router.back();
+    // history.length는 앱 밖 기록도 세므로, 앱 안에서 쌓은 기록이 있을 때만 뒤로 간다.
+    if (hasAppHistory()) router.back();
     else router.replace(backHref ?? "/?home=1");
   };
 
