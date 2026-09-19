@@ -24,7 +24,7 @@ interface CourseTimelinePageProps {
 /**
  * 탐험 내 코스 상세 타임라인 (4.3.4).
  * 방문 완료·진행 중·미방문을 구분해 코스 장소를 순서대로 보여줌.
- * "코스 완료하기"로 완료 확인 모달(5.1.2-B) 연결.
+ * "코스 완료하기"로 완료 확인 모달(5.1.2-B) 연결. 전부 방문했으면 일반 완료 확인, 아니면 조기 완료 경고.
  */
 const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   const { courseId } = use(params);
@@ -84,6 +84,8 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
     course.places.length;
   const progressPercent =
     totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  // 모든 장소를 방문했으면 조기 완료 경고 대신 일반 완료 확인을 보여준다.
+  const isAllVisited = totalCount > 0 && completedCount >= totalCount;
 
   const isExplorationCompleted = explorationStatus?.status === "COMPLETED";
 
@@ -157,10 +159,14 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
       {/* 완료 확인 모달 (5.1.2-B) — Modal 재사용 */}
       <Modal open={isCompleteOpen} onClose={() => setIsCompleteOpen(false)}>
         <h2 className="text-neutral-07 text-[18px] font-semibold">
-          아직 방문하지 않은 곳이 있어요
+          {isAllVisited
+            ? "코스를 완료할까요?"
+            : "아직 방문하지 않은 곳이 있어요"}
         </h2>
         <p className="text-neutral-04 mt-2 text-[13px] leading-[1.55]">
-          지금 완료하면 코스는 완료 처리되고 되돌릴 수 없어요.
+          {isAllVisited
+            ? "모든 장소를 방문했어요. 완료하면 여행 기록으로 이동하고 되돌릴 수 없어요."
+            : "지금 완료하면 코스는 완료 처리되고 되돌릴 수 없어요."}
         </p>
         <div className="mt-5 flex gap-2">
           <Button

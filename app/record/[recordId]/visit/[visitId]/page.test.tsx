@@ -10,6 +10,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import VisitRecordPage from "./page";
 import AppHeader from "@/components/layout/AppHeader";
+import { installAppHistoryTracking } from "@/lib/appHistory";
 
 const router = vi.hoisted(() => ({
   back: vi.fn(),
@@ -33,6 +34,9 @@ vi.mock("@/features/record/hooks/useSaveVisitRecordMutation", () => ({
     isPending: false,
   }),
 }));
+
+// 실제 앱처럼 pushState가 앱 안 history 깊이를 기록하게 한다.
+installAppHistoryTracking();
 
 beforeEach(() => {
   vi.clearAllMocks();

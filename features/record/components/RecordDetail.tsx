@@ -16,6 +16,7 @@ import {
   formatRecordTime,
   type TravelRecord,
 } from "@/features/record/mockRecords";
+import { getJourneyGradient } from "@/features/record/utils/journeyGradient";
 import { useCaptureImage } from "@/hooks/useCaptureImage";
 
 const SHARE_VERSIONS = [{ id: "journey", label: "여행 기록" }];
@@ -35,6 +36,10 @@ const RecordDetail = ({ record, visitedPlaces = [] }: RecordDetailProps) => {
     share,
   } = useCaptureImage<HTMLDivElement>();
   const fileName = `beyond-may-record-${record.recordId}`;
+  // 이날 밝힌 장소들의 유형 색으로 상단 이미지와 공유 카드 배경을 칠한다.
+  const journeyGradient = getJourneyGradient(
+    record.places.map((place) => place.travelMbtiType),
+  );
 
   const mapMarkers: MapMarker[] = visitedPlaces.map((place, index) => ({
     id: String(place.placeId),
@@ -82,7 +87,10 @@ const RecordDetail = ({ record, visitedPlaces = [] }: RecordDetailProps) => {
           <Share className="h-5 w-5" />
         </button>
 
-        <section className="relative flex min-h-[410px] flex-col justify-end overflow-hidden bg-[linear-gradient(155deg,#6E4DE4_0%,#BFBaff_42%,#F9D4C9_76%,#E74D22_140%)] px-6 pb-8 text-white">
+        <section
+          style={{ backgroundImage: journeyGradient }}
+          className="relative flex min-h-[410px] flex-col justify-end overflow-hidden px-6 pb-8 text-white"
+        >
           <div className="absolute top-20 right-[-58px] h-64 w-64 rounded-full border-[48px] border-white/12" />
           <div className="absolute top-32 right-12 h-5 w-5 rounded-full bg-white" />
           <div className="absolute top-[166px] right-[66px] h-px w-44 -rotate-[22deg] bg-white/70" />
@@ -229,7 +237,8 @@ const RecordDetail = ({ record, visitedPlaces = [] }: RecordDetailProps) => {
       >
         <div
           ref={shareCardRef}
-          className="relative aspect-[4/5] overflow-hidden bg-[linear-gradient(155deg,#6E4DE4_0%,#BFBaff_42%,#F9D4C9_78%,#E74D22_140%)] p-6 text-white"
+          style={{ backgroundImage: journeyGradient }}
+          className="relative aspect-[4/5] overflow-hidden p-6 text-white"
         >
           <div className="absolute top-[-40px] right-[-60px] h-56 w-56 rounded-full border-[42px] border-white/15" />
           <div className="absolute top-24 right-12 h-4 w-4 rounded-full bg-white" />

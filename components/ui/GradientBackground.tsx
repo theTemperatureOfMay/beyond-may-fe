@@ -28,6 +28,11 @@ interface GradientBackgroundProps {
    * 콘텐츠 높이만큼 늘어나 확대되는 걸 막는다.
    */
   fixed?: boolean;
+  /**
+   * 동심원 아래에 수평선을 그린다. 수평선에서 진하게 시작해 아래로 갈수록 밝아지는 영역이라
+   * 화면 높이가 고정된 홈에서만 쓴다(긴 본문 페이지는 하단 흰색 페이드를 쓴다).
+   */
+  horizon?: boolean;
   className?: string;
 }
 
@@ -47,6 +52,10 @@ const RING_C = { cx: 195.22, r: 236.2, cy: [526.59, 329.2, 221.83] };
 /** 태양 뒤로 뻗어나가는 빛줄기(쐐기). x는 고정, y만 프레임별로 위로 이동 */
 const RAY_PATH = "M-173.9 493.26L189 2278.5L559.71 493.26Z";
 const RAY_Y = [0, -258.26, -475.26];
+/** 수평선의 y. 빛줄기의 윗변과 같은 높이에서 시작한다. */
+const HORIZON_TOP = 493.26;
+/** 스크롤로 수평선이 위로 올라가도 아래가 비지 않도록 넉넉한 높이 */
+const HORIZON_HEIGHT = 1800;
 
 /** 태양: 동심원 중앙의 점 */
 const SUN = { cx: 192.91, r: 34.75, cy: [355.07, 157.68, 50.31] };
@@ -81,11 +90,12 @@ interface BlobLayerProps {
 }
 
 /**
- * 블러 처리한 컬러 블롭 배경. 스크롤 연출과 무관한 정적 레이어라 별도 svg로 분리해
+ * 블러 처리한 컬러 블롭 배경(블롭이 없는 테마는 바탕색만). 스크롤 연출과 무관한 정적 레이어라 별도 svg로 분리해
  * 블러 결과가 한 번만 계산·캐시되게 한다(동심원이 움직일 때마다 재계산되지 않도록).
  */
 const BlobLayer = memo(({ theme }: BlobLayerProps) => {
   const filterId = useId();
+  const { blobs } = theme;
 
   return (
     <svg
@@ -94,37 +104,40 @@ const BlobLayer = memo(({ theme }: BlobLayerProps) => {
       preserveAspectRatio="xMidYMin slice"
       className="absolute inset-0 h-full w-full"
     >
-      <defs>
-        <filter
-          id={filterId}
-          filterUnits="userSpaceOnUse"
-          colorInterpolationFilters="sRGB"
-          {...BLUR_REGION}
-        >
-          <feGaussianBlur stdDeviation={BLOB_BLUR} />
-        </filter>
-      </defs>
-
       <rect width={VIEW_WIDTH} height={VIEW_HEIGHT} fill={theme.base} />
 
-      {BLOB_PATHS.map((path, index) => (
-        <path
-          key={path}
-          d={path}
-          fill={theme.blobs[index]}
-          filter={`url(#${filterId})`}
-        />
-      ))}
-      {STRONG_ELLIPSES.map((ellipse) => (
-        <ellipse
-          key={`${ellipse.cx}-${ellipse.cy}`}
-          cx={ellipse.cx}
-          cy={ellipse.cy}
-          {...STRONG_ELLIPSE_RADIUS}
-          fill={theme.strong}
-          filter={`url(#${filterId})`}
-        />
-      ))}
+      {blobs && (
+        <>
+          <defs>
+            <filter
+              id={filterId}
+              filterUnits="userSpaceOnUse"
+              colorInterpolationFilters="sRGB"
+              {...BLUR_REGION}
+            >
+              <feGaussianBlur stdDeviation={BLOB_BLUR} />
+            </filter>
+          </defs>
+          {BLOB_PATHS.map((path, index) => (
+            <path
+              key={path}
+              d={path}
+              fill={blobs[index]}
+              filter={`url(#${filterId})`}
+            />
+          ))}
+          {STRONG_ELLIPSES.map((ellipse) => (
+            <ellipse
+              key={`${ellipse.cx}-${ellipse.cy}`}
+              cx={ellipse.cx}
+              cy={ellipse.cy}
+              {...STRONG_ELLIPSE_RADIUS}
+              fill={theme.strong}
+              filter={`url(#${filterId})`}
+            />
+          ))}
+        </>
+      )}
     </svg>
   );
 });
@@ -136,7 +149,7 @@ BlobLayer.displayName = "BlobLayer";
  *
  * 구성:
  * - 블러 블롭 배경(BlobLayer) 위에 동심원·빛줄기·태양이 스크롤에 따라 위로 이동하며 사라짐
- * - 하단은 흰색으로 페이드되어 본문/버튼 영역과 자연스럽게 이어짐
+ * - 유형 테마는 하단이 흰색으로 페이드되어 본문/버튼 영역과 자연스럽게 이어짐
  * - theme로 성향 유형별 색을 바꾼다(미지정 = 시안 원본)
  * - progress가 없는 정적 사용처(QuizIntro, 결과 로딩 등)는 첫 프레임 그대로 노출
  * - prefers-reduced-motion 사용자는 progress와 무관하게 첫 프레임 고정
@@ -145,6 +158,7 @@ const GradientBackground = ({
   progress,
   theme = "default",
   fixed = false,
+  horizon = false,
   className,
 }: GradientBackgroundProps) => {
   const prefersReducedMotion = useReducedMotion();
@@ -153,6 +167,7 @@ const GradientBackground = ({
   const heroTheme = HERO_THEMES[theme];
   const gradientId = useId();
   const glowId = `${gradientId}-glow`;
+  const horizonId = `${gradientId}-horizon`;
   const fadeId = `${gradientId}-fade`;
   const finishId = `${gradientId}-finish`;
 
@@ -165,6 +180,7 @@ const GradientBackground = ({
   const finalFrameOpacity = useTransform(scroll, [0.5, 1], [0, 1]);
 
   const showStatic = prefersReducedMotion || !progress;
+  const horizonColors = horizon ? heroTheme.horizon : null;
 
   return (
     <div
@@ -190,6 +206,19 @@ const GradientBackground = ({
             <stop offset="0.54" stopColor="white" stopOpacity="0.54" />
             <stop offset="1" stopColor={heroTheme.glow} />
           </linearGradient>
+          {horizonColors && (
+            <linearGradient
+              id={horizonId}
+              gradientUnits="userSpaceOnUse"
+              x1="0"
+              y1={HORIZON_TOP}
+              x2="0"
+              y2={VIEW_HEIGHT}
+            >
+              <stop offset="0" stopColor={horizonColors[0]} />
+              <stop offset="1" stopColor={horizonColors[1]} />
+            </linearGradient>
+          )}
           <linearGradient id={fadeId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="white" stopOpacity="0" />
             <stop offset="0.538" stopColor="white" stopOpacity="0.538" />
@@ -204,12 +233,14 @@ const GradientBackground = ({
           </linearGradient>
         </defs>
 
-        <rect
-          y="609"
-          width={VIEW_WIDTH}
-          height="259"
-          fill={`url(#${fadeId})`}
-        />
+        {heroTheme.fade && !horizonColors && (
+          <rect
+            y="609"
+            width={VIEW_WIDTH}
+            height="259"
+            fill={`url(#${fadeId})`}
+          />
+        )}
 
         {showStatic ? (
           <path
@@ -272,6 +303,24 @@ const GradientBackground = ({
             fill={`url(#${glowId})`}
           />
         )}
+
+        {horizonColors &&
+          (showStatic ? (
+            <rect
+              y={HORIZON_TOP}
+              width={VIEW_WIDTH}
+              height={HORIZON_HEIGHT}
+              fill={`url(#${horizonId})`}
+            />
+          ) : (
+            <motion.rect
+              y={HORIZON_TOP}
+              width={VIEW_WIDTH}
+              height={HORIZON_HEIGHT}
+              fill={`url(#${horizonId})`}
+              style={{ y: rayY }}
+            />
+          ))}
 
         {showStatic ? (
           <circle cx={SUN.cx} cy={SUN.cy[0]} r={SUN.r} fill={heroTheme.sun} />
