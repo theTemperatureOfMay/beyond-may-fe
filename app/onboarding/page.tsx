@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PreferenceQuestion } from "@/types/preference";
 
+import Modal from "@/components/ui/Modal";
 import { useGetPreferenceQuestionsQuery } from "@/features/onboarding/hooks/useGetPreferenceQuestionsQuery";
 import { useQuiz } from "@/features/onboarding/hooks/useQuiz";
 import { computePreference } from "@/features/onboarding/utils/computePreference";
+import {
+  clearQuizDraft,
+  readQuizDraft,
+  restoreQuestionOrder,
+  writeQuizDraft,
+} from "@/features/onboarding/utils/quizDraft";
 import { smoothScrollTo } from "@/features/onboarding/utils/smoothScrollTo";
 import useSessionStore from "@/stores/sessionStore";
 import AppHeader from "@/components/layout/AppHeader";
@@ -42,13 +49,20 @@ const shuffleQuestions = (all: PreferenceQuestion[]): PreferenceQuestion[] => {
 
 const OnboardingPage = () => {
   const router = useRouter();
+  const [savedDraft] = useState(readQuizDraft);
+  const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(
+    savedDraft !== null,
+  );
 
   const { data, isLoading, isError, refetch } =
     useGetPreferenceQuestionsQuery();
 
   const questions = useMemo(
-    () => shuffleQuestions(data?.questions ?? []),
-    [data?.questions],
+    () =>
+      savedDraft
+        ? restoreQuestionOrder(data?.questions ?? [], savedDraft.questionIds)
+        : shuffleQuestions(data?.questions ?? []),
+    [data?.questions, savedDraft],
   );
   const hasInvalidQuestionData =
     !isLoading && !isError && questions.length < SERVED_QUESTION_COUNT;
@@ -56,15 +70,21 @@ const OnboardingPage = () => {
 
   const {
     answers,
+    activeQuestionCount,
     visibleQuestions,
     progress,
     isCompleted,
     getSelectedOption,
     selectAnswer,
+    reset,
   } = useQuiz({
     questions,
-    initialQuestionCount: SERVED_QUESTION_COUNT,
+    initialQuestionCount:
+      savedDraft?.activeQuestionCount ?? SERVED_QUESTION_COUNT,
+    initialAnswers: savedDraft?.answers,
   });
+
+  const hasHydratedDraft = useRef(false);
 
   const setLocalPreference = useSessionStore(
     (state) => state.setLocalPreference,
@@ -80,6 +100,22 @@ const OnboardingPage = () => {
   const cancelScrollRef = useRef<(() => void) | null>(null);
 
   useEffect(() => () => cancelScrollRef.current?.(), []);
+
+  useEffect(() => {
+    if (!isReady) return;
+    if (!hasHydratedDraft.current) {
+      hasHydratedDraft.current = true;
+      return;
+    }
+    if (answers.length === 0) return;
+
+    writeQuizDraft({
+      answers,
+      activeQuestionCount,
+      questionIds: questions.map((question) => question.questionId),
+      savedAt: Date.now(),
+    });
+  }, [activeQuestionCount, answers, isReady, questions]);
 
   const handleSelect = (questionId: number, optionId: number): void => {
     const isNewAnswer = getSelectedOption(questionId) === null;
@@ -113,6 +149,7 @@ const OnboardingPage = () => {
   useEffect(() => {
     if (!isCompleted) return;
 
+    clearQuizDraft();
     const computed = computePreference(questions, answers);
     setLocalPreference(computed);
 
@@ -140,6 +177,12 @@ const OnboardingPage = () => {
     updateMyPreference,
     router,
   ]);
+
+  const handleStartFresh = (): void => {
+    clearQuizDraft();
+    reset(SERVED_QUESTION_COUNT);
+    setIsResumeDialogOpen(false);
+  };
 
   // 로딩/에러 상태: 질문 준비 전에는 인트로(로딩) 화면만 출력.
   if (!isReady) {
@@ -211,6 +254,21 @@ const OnboardingPage = () => {
           />
         </div>
       ))}
+
+      <Modal open={isResumeDialogOpen} onClose={() => {}}>
+        <h2 className="text-neutral-07 text-center text-lg font-semibold">
+          작성 중이던 답변이 있어요
+        </h2>
+        <p className="text-neutral-04 mt-3 text-center text-sm leading-6">
+          이전에 진행하던 성향 검사를 이어서 할까요?
+        </p>
+        <div className="mt-5 flex flex-col gap-3">
+          <Button variant="solid" onClick={() => setIsResumeDialogOpen(false)}>
+            이어서 하기
+          </Button>
+          <Button onClick={handleStartFresh}>새로 시작</Button>
+        </div>
+      </Modal>
     </main>
   );
 };

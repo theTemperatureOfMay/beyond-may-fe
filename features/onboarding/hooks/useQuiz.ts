@@ -11,10 +11,12 @@ import {
 interface UseQuizParams {
   questions: PreferenceQuestion[];
   initialQuestionCount?: number;
+  initialAnswers?: PreferenceAnswer[];
 }
 
 interface UseQuizReturn {
   answers: PreferenceAnswer[];
+  activeQuestionCount: number;
   /** 화면에 렌더할 문항 (답변 수 + 1개까지만 노출 → 미답변 스킵 차단) */
   visibleQuestions: PreferenceQuestion[];
   /** 진행률 0~100. 분모는 현재 출제된 문항 수 */
@@ -25,6 +27,8 @@ interface UseQuizReturn {
   getSelectedOption: (questionId: number) => number | null;
   /** 답변 선택/변경 */
   selectAnswer: (questionId: number, optionId: number) => void;
+  /** 임시 저장 답변을 버리고 처음부터 시작 */
+  reset: (questionCount?: number) => void;
 }
 
 /**
@@ -41,11 +45,12 @@ interface UseQuizReturn {
 export const useQuiz = ({
   questions,
   initialQuestionCount = 7,
+  initialAnswers = [],
 }: UseQuizParams): UseQuizReturn => {
-  const [quizState, setQuizState] = useState({
-    answers: [] as PreferenceAnswer[],
+  const [quizState, setQuizState] = useState(() => ({
+    answers: initialAnswers,
     activeQuestionCount: initialQuestionCount,
-  });
+  }));
   const { answers, activeQuestionCount } = quizState;
 
   const activeQuestions = useMemo(
@@ -95,6 +100,16 @@ export const useQuiz = ({
 
   const answeredCount = answers.length;
 
+  const reset = useCallback(
+    (questionCount = initialQuestionCount) => {
+      setQuizState({
+        answers: [],
+        activeQuestionCount: questionCount,
+      });
+    },
+    [initialQuestionCount],
+  );
+
   const isTie = useMemo(() => {
     if (answeredCount !== activeQuestions.length) return false;
     return hasPreferenceTie(computePreference(questions, answers));
@@ -120,10 +135,12 @@ export const useQuiz = ({
 
   return {
     answers,
+    activeQuestionCount,
     visibleQuestions,
     progress,
     isCompleted,
     getSelectedOption,
     selectAnswer,
+    reset,
   };
 };

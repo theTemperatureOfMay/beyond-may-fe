@@ -25,6 +25,24 @@ const questions: PreferenceQuestion[] = Array.from(
 );
 
 describe("useQuiz", () => {
+  it("저장된 답변으로 시작하고 새로 시작 시 초기화한다", () => {
+    const { result } = renderHook(() =>
+      useQuiz({
+        questions,
+        initialQuestionCount: 8,
+        initialAnswers: [{ questionId: 1, optionId: 11 }],
+      }),
+    );
+
+    expect(result.current.answers).toEqual([{ questionId: 1, optionId: 11 }]);
+    expect(result.current.activeQuestionCount).toBe(8);
+
+    act(() => result.current.reset(7));
+
+    expect(result.current.answers).toEqual([]);
+    expect(result.current.activeQuestionCount).toBe(7);
+  });
+
   it("기본 7개에서 동점이면 다음 질문을 열고 해소되면 완료한다", async () => {
     const { result } = renderHook(() =>
       useQuiz({ questions, initialQuestionCount: 7 }),
