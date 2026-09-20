@@ -27,10 +27,12 @@ export const getCurrentRecommendation =
 
 export const postRecommendationSet = async (
   body: CreateRecommendationSetRequest,
+  signal?: AbortSignal,
 ): Promise<CreateRecommendationSetResponse> => {
   const res = await api.post<CreateRecommendationSetResponse>(
     API_ENDPOINTS.recommendation.create,
     body,
+    { signal },
   );
   return res.data!;
 };

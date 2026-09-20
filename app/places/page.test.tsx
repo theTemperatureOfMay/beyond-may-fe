@@ -11,6 +11,7 @@ import PlacesPage from "./page";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 const createRecommendationSet = vi.hoisted(() => vi.fn());
+const resetRecommendationSet = vi.hoisted(() => vi.fn());
 const replaceBatchReactions = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -20,6 +21,7 @@ vi.mock("@/features/places/hooks/useGetCurrentRecommendationQuery", () => ({
 vi.mock("@/features/places/hooks/useCreateRecommendationSetMutation", () => ({
   default: () => ({
     mutate: createRecommendationSet,
+    reset: resetRecommendationSet,
     isPending: false,
     isError: false,
   }),
@@ -143,4 +145,41 @@ it("추천 회차 반응 실패 시 동일한 요청 payload로 재시도한다"
 
   expect(replaceBatchReactions).toHaveBeenCalledTimes(2);
   expect(replaceBatchReactions.mock.calls[1]?.[0]).toEqual(firstCall[0]);
+});
+
+it("추천 생성 취소 시 요청을 중단하고 늦은 응답을 무시한다", async () => {
+  render(<PlacesPage />);
+
+  fireEvent.click(screen.getByRole("button", { name: "다음 · 장소 고르기" }));
+  const firstCall = createRecommendationSet.mock.calls[0] as [
+    { signal: AbortSignal },
+    { onSuccess: (data: unknown) => void },
+  ];
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "취소하고 기간 다시 선택" }),
+  );
+  expect(resetRecommendationSet).toHaveBeenCalledTimes(1);
+  expect(firstCall[0].signal.aborted).toBe(true);
+
+  fireEvent.click(screen.getByRole("button", { name: "다음 · 장소 고르기" }));
+  act(() => {
+    firstCall[1].onSuccess({
+      recommendationId: 99,
+      minimumSelectionCount: 1,
+      selectionReady: false,
+      batch: {
+        batchNumber: 1,
+        completed: false,
+        places: [{ placeId: 999 }],
+      },
+    });
+  });
+
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  });
+  expect(
+    screen.queryByRole("button", { name: "장소 좋아요" }),
+  ).not.toBeInTheDocument();
 });

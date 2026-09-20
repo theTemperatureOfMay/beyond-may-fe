@@ -140,12 +140,15 @@ export default function PlacesPage() {
   const [hasLoadingMinimumElapsed, setHasLoadingMinimumElapsed] =
     useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const recommendationAbortController = useRef<AbortController | null>(null);
+  const recommendationRequestId = useRef(0);
   const generationCancelled = useRef(false);
 
   const { data: existingRecommendation, refetch: refetchRecommendation } =
     useGetCurrentRecommendationQuery();
   const {
     mutate: createRecommendationSet,
+    reset: resetRecommendationSet,
     isPending: isCreatingRecommendation,
     isError: isCreateRecommendationError,
   } = useCreateRecommendationSetMutation();
@@ -264,6 +267,8 @@ export default function PlacesPage() {
   };
 
   const handleLoadRecommendations = (): void => {
+    recommendationAbortController.current?.abort();
+    const requestId = ++recommendationRequestId.current;
     setFailedBatchReaction(null);
     setHasLoadingMinimumElapsed(false);
     setLoadingMessageIndex(0);
@@ -286,10 +291,24 @@ export default function PlacesPage() {
       return;
     }
 
+    const abortController = new AbortController();
+    recommendationAbortController.current = abortController;
     createRecommendationSet(
-      { travelSchedule, startDate, endDate },
+      {
+        body: { travelSchedule, startDate, endDate },
+        signal: abortController.signal,
+      },
       {
         onSuccess: (data) => {
+          if (
+            requestId !== recommendationRequestId.current ||
+            abortController.signal.aborted
+          ) {
+            return;
+          }
+          if (recommendationAbortController.current === abortController) {
+            recommendationAbortController.current = null;
+          }
           setRecommendationId(data.recommendationId);
           setServerMinimum(data.minimumSelectionCount);
           setLikedPlaces([]);
@@ -300,12 +319,27 @@ export default function PlacesPage() {
           if (data.batch.completed) {
             // 같은 일정으로 이미 끝까지 진행한 세트 — 최신 진행 상태를 다시 받아온다
             void refetchRecommendation().then(({ data: refreshed }) => {
+              if (
+                requestId !== recommendationRequestId.current ||
+                abortController.signal.aborted
+              ) {
+                return;
+              }
               if (refreshed) resumeFromRecommendation(refreshed);
             });
             return;
           }
           setIsDeckComplete(false);
           setCurrentBatch(data.batch);
+        },
+        onError: () => {
+          if (
+            requestId === recommendationRequestId.current &&
+            !abortController.signal.aborted &&
+            recommendationAbortController.current === abortController
+          ) {
+            recommendationAbortController.current = null;
+          }
         },
       },
     );
@@ -326,6 +360,10 @@ export default function PlacesPage() {
   };
 
   const handleCancelRecommendations = (): void => {
+    recommendationRequestId.current += 1;
+    recommendationAbortController.current?.abort();
+    recommendationAbortController.current = null;
+    resetRecommendationSet();
     setStep("period");
   };
 
