@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGetCourseDetailQuery } from "@/hooks/queries/useGetCourseDetailQuery";
 import { useGetNearbyPlacesQuery } from "@/hooks/queries/useGetNearbyPlacesQuery";
 import { getCourseMapData } from "@/features/course/utils/courseMapAdapter";
@@ -9,6 +10,7 @@ import { toLatLng } from "@/features/explore/utils/toLatLng";
 import { isInGwangju } from "@/lib/geo/gwangju";
 import { getDistanceInMeters } from "@/lib/geo/distance";
 import { getRemainingRoute } from "@/lib/geo/trimRoute";
+import type { LocationUpdatedData } from "@/types/socket";
 
 import useExplorationSocket from "@/features/explore/hooks/useExplorationSocket";
 import Toast from "@/components/ui/Toast";
@@ -28,9 +30,7 @@ import TeamParticipantsSheet from "@/features/explore/components/TeamParticipant
 import NearbyPlacesSheet from "@/features/explore/components/NearbyPlacesSheet";
 import NearbyEmptyToast from "@/features/explore/components/NearbyEmptyToast";
 import LocationSharingModal from "@/features/explore/components/LocationSharingModal";
-import { useQueryClient } from "@tanstack/react-query";
 import PlaceDetailContainer from "@/features/explore/components/PlaceDetailContainer";
-import { QUERY_KEYS } from "@/services/constant/queryKey";
 import OutOfGwangjuBanner from "@/features/explore/components/OutOfGwangjuBanner";
 import Sidebar from "@/components/layout/sidebar/Sidebar";
 import SidebarProfileMenu from "@/components/layout/sidebar/SidebarProfileMenu";
@@ -39,6 +39,7 @@ import useGetExplorationVisitedPlacesQuery from "@/features/explore/hooks/useGet
 import useGetParticipantsQuery from "@/features/explore/hooks/useGetParticipantsQuery";
 import useGetExplorationStatusQuery from "@/features/explore/hooks/useGetExplorationStatusQuery";
 import useGetRouteMutation from "@/features/explore/hooks/useGetRouteMutation";
+import useRefreshVisitProgress from "@/features/explore/hooks/useRefreshVisitProgress";
 import useGeolocationStore from "@/stores/geolocationStore";
 import useSessionStore from "@/stores/sessionStore";
 import useLocationSimulationStore from "@/stores/locationSimulationStore";
@@ -46,6 +47,7 @@ import useSimulatedLocation from "@/features/explore/hooks/useSimulatedLocation"
 import useCreateVisitMutation from "@/features/explore/hooks/useCreateVisitMutation";
 import type { Directions } from "@/types/route";
 import type { PlaceDetailResponse } from "@/types/place";
+import { QUERY_KEYS } from "@/services/constant/queryKey";
 
 interface ExploreMapPageProps {
   params: Promise<{ courseId: string }>;
@@ -72,6 +74,11 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const [isGuiding, setIsGuiding] = useState(false);
   const [isDirectionsCollapsed, setIsDirectionsCollapsed] = useState(false);
   const queryClient = useQueryClient();
+  const [teammates, setTeammates] = useState<Map<number, LocationUpdatedData>>(
+    new Map(),
+  );
+  const myParticipantIdRef = useRef<number | null>(null);
+  const refreshVisitProgress = useRefreshVisitProgress(explorationIdStr);
 
   const visitMapRef = useRef<VisitMapHandle>(null);
   const routeRequestIdRef = useRef(0);
@@ -112,15 +119,28 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
         : undefined,
     enabled: explorationId !== null && explorationStatus?.status === "ONGOING",
     onVisit: () => {
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
-      });
+      void refreshVisitProgress();
     },
     onLocation: (payload) => {
-      console.log("팀원 위치:", payload);
+      const loc = payload.data;
+      if (loc.participantId === myParticipantIdRef.current) return; // 내 위치는 myLocation으로 이미 표시
+      setTeammates((prev) => {
+        const next = new Map(prev);
+        next.set(loc.participantId, loc);
+        return next;
+      });
     },
     onEvent: (payload) => {
-      console.log("이벤트:", payload);
+      if (
+        payload.eventType === "LOCATION_SHARING_CHANGED" &&
+        !payload.data.enabled
+      ) {
+        setTeammates((prev) => {
+          const next = new Map(prev);
+          next.delete(payload.data.participantId);
+          return next;
+        });
+      }
     },
     onStompError: (code) => {
       setStompErrorMessage(getStompErrorMessage(code));
@@ -131,6 +151,11 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  useEffect(() => {
+    myParticipantIdRef.current =
+      explorationStatus?.currentParticipant.participantId ?? null;
+  }, [explorationStatus]);
 
   useEffect(() => {
     if (!coordinates || explorationId === null) return;
@@ -179,6 +204,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
       enabled: isNearbyRequested,
     });
   const nearbyPlaces = nearbyData?.places ?? [];
+
+  // 팀원 목록을 렌더마다 새 배열로 만들면 지도 핀이 매번 다시 계산되므로, 팀원 위치가 바뀔 때만 만든다.
+  const teammateList = useMemo(() => [...teammates.values()], [teammates]);
 
   const initialVisitedPlaceIds = useMemo(
     () => visitedData?.visitedPlaces.map((place) => place.placeId) ?? [],
@@ -274,6 +302,10 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
     setIsDirectionsCollapsed(false);
   };
 
+  const isOngoing = explorationStatus?.status === "ONGOING";
+  // 위치 체험은 전 장소 방문(다음 목적지 없음)이거나 탐험이 끝나면 더 이어갈 수 없다.
+  const isTourFinished = nextPlace === null || !isOngoing;
+
   const handleOpenDirections = (place: PlaceDetailResponse): void => {
     if (!routeStartLocation) return;
     const requestId = routeRequestIdRef.current + 1;
@@ -337,6 +369,12 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
       );
     };
 
+    // 자동 투어는 구간마다 한 번, 도착할 장소로 지도를 부드럽게 옮긴다(좌표마다 옮기지 않는다).
+    visitMapRef.current?.panToPosition({
+      lat: place.latitude,
+      lng: place.longitude,
+    });
+
     walkTo({ latitude: place.latitude, longitude: place.longitude }, () => {
       if (!useLocationSimulationStore.getState().isRunning) return;
       if (initialVisitedPlaceIds.includes(place.placeId)) {
@@ -357,6 +395,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
               queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
             });
             clearDirections();
+            void refreshVisitProgress();
             goNext();
           },
           onError: goNext,
@@ -372,6 +411,8 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   };
 
   const handleToggleTour = () => {
+    // 끝난 탐험에 체험을 다시 돌리면 위치·방문 인증이 서버 오류를 낸다.
+    if (!isTourRunning && isTourFinished) return;
     if (isTourRunning) {
       if (autoTourTimerRef.current !== null) {
         clearTimeout(autoTourTimerRef.current);
@@ -386,12 +427,13 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   };
 
   const participantCount = participants?.participantCount ?? 0;
-  const isOngoing = explorationStatus?.status === "ONGOING";
   const canUseNearby = coordinates != null && isInGwangju(coordinates);
   const isOutOfGwangju = coordinates != null && !isInGwangju(coordinates);
   // 광주 밖이거나 위치 권한 거부 → 심사/데모용 위치 체험 진입 배너
   const showSimulationBanner =
-    !isSimulationEnabled && (isOutOfGwangju || geoPermission === "denied");
+    isOngoing &&
+    !isSimulationEnabled &&
+    (isOutOfGwangju || geoPermission === "denied");
   const showEmptyToast =
     isNearbyRequested && isNearbySuccess && nearbyPlaces.length === 0;
 
@@ -400,7 +442,10 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
       <VisitMap
         ref={visitMapRef}
         places={course.places}
-        center={myLocation ?? center}
+        // 지도 중심은 코스 중심으로 고정한다. 내 위치로 넘기면 위치가 갱신될 때마다
+        // (체험 모드 50ms, GPS 정확도 경계에서는 내 위치↔코스 중심을 오가며) 지도가 강제로 이동한다.
+        // 내 위치 이동은 "내 위치" 버튼(panToMyLocation)으로만 한다.
+        center={center}
         myLocation={myLocation}
         visitedPlaceIds={initialVisitedPlaceIds}
         currentPlaceId={nextPlace?.placeId ?? null}
@@ -411,6 +456,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
         routeCategory={directionsTarget?.travelMbtiType}
         fitBoundsKey={routeFitBoundsKey}
         onMarkerClick={handlePlaceSelection}
+        teammates={teammateList}
       />
 
       <ExploreHeader
@@ -448,6 +494,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
         isSimulationEnabled={isSimulationEnabled}
         isTourRunning={isTourRunning}
         isGuiding={isGuiding}
+        isTourFinished={isTourFinished}
         canUseNearby={canUseNearby}
         onToggleTour={handleToggleTour}
         onNearby={() => setIsNearbyRequested(true)}
@@ -514,6 +561,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
             queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
           });
           clearDirections();
+          void refreshVisitProgress();
           setSelectedPlaceId(null);
         }}
       />

@@ -13,6 +13,8 @@ import PlaceDetailContainer from "@/features/explore/components/PlaceDetailConta
 import useCompleteExplorationMutation from "@/features/explore/hooks/useCompleteExplorationMutation";
 import { QUERY_KEYS } from "@/services/constant/queryKey";
 import { getApiCode } from "@/services/lib/axios";
+import useRefreshVisitProgress from "@/features/explore/hooks/useRefreshVisitProgress";
+import { getCompletedPlaceCount } from "@/features/explore/utils/visitProgress";
 import useGetExplorationVisitedPlacesQuery from "@/features/explore/hooks/useGetExplorationVisitedPlacesQuery";
 import useGetExplorationStatusQuery from "@/features/explore/hooks/useGetExplorationStatusQuery";
 import useSessionStore from "@/stores/sessionStore";
@@ -34,6 +36,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   const [isCompleteOpen, setIsCompleteOpen] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const refreshVisitProgress = useRefreshVisitProgress(explorationIdStr);
 
   const router = useRouter();
   const { mutate: completeExploration, isPending: isCompleting } =
@@ -76,9 +79,11 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   );
   const activePlaceId = activePlace?.placeId;
 
-  const completedCount =
-    explorationStatus?.courseProgress.completedCoursePlaceCount ??
-    visitedPlaceIds.length;
+  // 체크 표시는 방문 목록, 진행률은 탐험 상태에서 오므로 한쪽이 옛 값이어도 어긋나지 않게 더 큰 값을 쓴다.
+  const completedCount = getCompletedPlaceCount(
+    explorationStatus?.courseProgress.completedCoursePlaceCount,
+    visitedPlaceIds.length,
+  );
   const totalCount =
     explorationStatus?.courseProgress.totalCoursePlaceCount ??
     course.places.length;
@@ -88,6 +93,8 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   const isAllVisited = totalCount > 0 && completedCount >= totalCount;
 
   const isExplorationCompleted = explorationStatus?.status === "COMPLETED";
+  const canCompleteEarly =
+    explorationStatus?.permissions.canCompleteEarly ?? false;
 
   const handleComplete = () => {
     if (!explorationIdStr) return;
@@ -144,7 +151,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
       </div>
 
       {/* 코스 완료하기 */}
-      {!isExplorationCompleted && (
+      {!isExplorationCompleted && canCompleteEarly && (
         <div className="px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
           <button
             type="button"
@@ -199,9 +206,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
           }
           onClose={() => setSelectedPlaceId(null)}
           onVisitSuccess={() => {
-            queryClient.invalidateQueries({
-              queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
-            });
+            void refreshVisitProgress();
             setSelectedPlaceId(null);
           }}
         />

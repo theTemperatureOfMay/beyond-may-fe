@@ -37,6 +37,10 @@ interface PlaceCardDeckProps {
   onSwipe: (direction: SwipeDirection) => void;
   onUndo: () => void;
   canUndo: boolean;
+  /** 최대 장소 수에 도달해 더 담을 수 없는 상태. 좋아요는 막고 카드는 그대로 둔다 */
+  isLikeBlocked?: boolean;
+  /** 막힌 상태에서 좋아요를 시도했을 때 (안내 모달 등) */
+  onLikeBlocked?: () => void;
 }
 
 /** 담은 장소 알림이 떠 있는 시간 (ms) */
@@ -201,6 +205,8 @@ const PlaceCardDeck = ({
   onSwipe,
   onUndo,
   canUndo,
+  isLikeBlocked = false,
+  onLikeBlocked,
 }: PlaceCardDeckProps) => {
   const visiblePlaces = places.slice(0, MAX_VISIBLE_CARDS);
   const topPlace = visiblePlaces[0];
@@ -230,6 +236,11 @@ const PlaceCardDeck = ({
 
   const commitSwipe = (direction: SwipeDirection, velocityX = 0) => {
     if (!topPlace) return;
+    // 카드는 날려 보내지 않는다 — 드래그 중이었다면 제자리로 돌아온다
+    if (direction === "like" && isLikeBlocked) {
+      onLikeBlocked?.();
+      return;
+    }
     setExitDirections((prev) => {
       const next = new Map(prev);
       next.set(topPlace.placeId, { direction, velocityX });

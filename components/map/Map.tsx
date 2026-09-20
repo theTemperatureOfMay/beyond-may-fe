@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CustomOverlayMap, Map, Polyline } from "react-kakao-maps-sdk";
 import useKakaoLoader from "@/hooks/useKakaoLoader";
 import MapPin from "@/components/map/MapPin";
@@ -219,9 +219,14 @@ const KakaoMap = ({
 
   // 클러스터 대상은 미방문(물방울)만. 깃발·방문완료는 묶지 않고 항상 단독 렌더.
   // (훅이므로 early return보다 위에서 호출해야 한다)
-  const clusterableMarkers = markers.filter(
-    (marker) =>
-      marker.variant !== "member" && !marker.visited && !marker.isCurrent,
+  // markers가 그대로면 같은 배열을 넘겨, 위치만 바뀌는 재렌더에서 겹침 계산이 다시 돌지 않게 한다.
+  const clusterableMarkers = useMemo(
+    () =>
+      markers.filter(
+        (marker) =>
+          marker.variant !== "member" && !marker.visited && !marker.isCurrent,
+      ),
+    [markers],
   );
   const { clusters, offsetGroups, singles } = useMarkerCluster(
     map,

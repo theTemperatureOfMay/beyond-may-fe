@@ -18,6 +18,11 @@ interface ExploreBottomSheetProps {
   isTourRunning: boolean;
   /** 길안내 중에는 지도 공간 확보를 위해 기본 진행 시트 본문을 숨긴다. */
   isGuiding?: boolean;
+  /**
+   * 위치 체험을 더 이어갈 수 없는 상태 (전 장소 방문 완료 또는 탐험 종료).
+   * 이때 다시 체험을 돌리면 이미 끝난 탐험에 위치·방문 인증이 나가 서버 오류가 난다.
+   */
+  isTourFinished: boolean;
   canUseNearby: boolean;
   onToggleTour: () => void;
   onNearby: () => void;
@@ -38,6 +43,7 @@ const ExploreBottomSheet = ({
   isSimulationEnabled,
   isTourRunning,
   isGuiding = false,
+  isTourFinished,
   canUseNearby,
   onToggleTour,
   onNearby,
@@ -94,9 +100,14 @@ const ExploreBottomSheet = ({
               <button
                 type="button"
                 onClick={onToggleTour}
-                className="border-neutral-03 text-neutral-07 focus-visible:outline-primary-03 min-h-12 flex-1 rounded-full border bg-white text-[14px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2"
+                disabled={isTourFinished && !isTourRunning}
+                className="border-neutral-03 text-neutral-07 focus-visible:outline-primary-03 disabled:text-neutral-04 min-h-12 flex-1 rounded-full border bg-white text-[14px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isTourRunning ? "위치 체험 정지" : "위치 체험 재개"}
+                {isTourRunning
+                  ? "위치 체험 정지"
+                  : isTourFinished
+                    ? "위치 체험 완료"
+                    : "위치 체험 재개"}
               </button>
             )}
             <button

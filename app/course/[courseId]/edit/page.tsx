@@ -8,8 +8,13 @@ import AppHeader from "@/components/layout/AppHeader";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import CourseTimeline from "@/features/course/components/CourseTimeline";
+import MaxPlacesModal from "@/features/course/components/MaxPlacesModal";
 import useGetPlaceRecommendationsQuery from "@/features/places/hooks/useGetPlaceRecommendationsQuery";
-import { getMinimumSelectionCount } from "@/features/places/utils/travelSchedule";
+import {
+  getDurationTypeByDates,
+  getMaximumPlaceCount,
+  getMinimumSelectionCount,
+} from "@/features/places/utils/travelSchedule";
 import { moveCoursePlace } from "@/features/course/utils/reorderCoursePlaces";
 import { useGetCourseDetailQuery } from "@/hooks/queries/useGetCourseDetailQuery";
 
@@ -95,6 +100,7 @@ const CourseEditor = ({
   const [remainingRevisions, setRemainingRevisions] = useState(2);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showMaxPlacesModal, setShowMaxPlacesModal] = useState(false);
 
   // 수동 편집 관련 상태
   const [history, setHistory] = useState<CoursePlace[][]>([]);
@@ -105,6 +111,11 @@ const CourseEditor = ({
   const { data: recommendations = [] } =
     useGetPlaceRecommendationsQuery(preferenceType);
   const minimumPlaceCount = getMinimumSelectionCount(course.travelSchedule);
+  // 코스 응답의 travelSchedule은 2종뿐이라 상한은 날짜 간격으로 판정한다
+  const maximumPlaceCount = getMaximumPlaceCount(
+    getDurationTypeByDates(course.startDate, course.endDate),
+  );
+  const isAtMaximum = places.length >= maximumPlaceCount;
 
   const availablePlaces = recommendations.filter(
     (place) => !places.some(({ placeId }) => placeId === place.placeId),
@@ -252,6 +263,10 @@ const CourseEditor = ({
   };
 
   const handleAddPlace = (placeId: number): void => {
+    if (isAtMaximum) {
+      setShowMaxPlacesModal(true);
+      return;
+    }
     const recommendation = recommendations.find((r) => r.placeId === placeId);
     if (!recommendation) return;
     setHistory((items) => [...items, places]);
@@ -459,6 +474,11 @@ const CourseEditor = ({
             </p>
           )}
         </div>
+        <MaxPlacesModal
+          open={showMaxPlacesModal}
+          onClose={() => setShowMaxPlacesModal(false)}
+          maxCount={maximumPlaceCount}
+        />
       </main>
     );
   }
@@ -640,7 +660,13 @@ const CourseEditor = ({
                           addPlaceMutation.isPending &&
                           addPlaceMutation.variables === place.placeId
                         }
-                        onClick={() => addPlaceMutation.mutate(place.placeId)}
+                        onClick={() => {
+                          if (isAtMaximum) {
+                            setShowMaxPlacesModal(true);
+                            return;
+                          }
+                          addPlaceMutation.mutate(place.placeId);
+                        }}
                       >
                         추가
                       </Button>
@@ -719,6 +745,12 @@ const CourseEditor = ({
           )}
         </div>
       )}
+
+      <MaxPlacesModal
+        open={showMaxPlacesModal}
+        onClose={() => setShowMaxPlacesModal(false)}
+        maxCount={maximumPlaceCount}
+      />
 
       <Modal open={showLimitModal} onClose={() => setShowLimitModal(false)}>
         <h2 className="text-neutral-07 text-center text-[20px] font-semibold">
