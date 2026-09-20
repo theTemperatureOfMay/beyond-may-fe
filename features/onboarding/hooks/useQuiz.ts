@@ -3,16 +3,21 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { PreferenceAnswer, PreferenceQuestion } from "@/types/preference";
+import {
+  computePreference,
+  hasPreferenceTie,
+} from "@/features/onboarding/utils/computePreference";
 
 interface UseQuizParams {
   questions: PreferenceQuestion[];
+  initialQuestionCount?: number;
 }
 
 interface UseQuizReturn {
   answers: PreferenceAnswer[];
   /** 화면에 렌더할 문항 (답변 수 + 1개까지만 노출 → 미답변 스킵 차단) */
   visibleQuestions: PreferenceQuestion[];
-  /** 진행률 0~100. 분모는 서버가 준 전체 문항 수 */
+  /** 진행률 0~100. 분모는 현재 출제된 문항 수 */
   progress: number;
   /** 모든 문항에 답했는지 → 결과 제출 트리거 */
   isCompleted: boolean;
@@ -30,12 +35,23 @@ interface UseQuizReturn {
  *   답변한 개수 + 1개까지만 렌더한다. 존재하지 않는 섹션은 스크롤 불가능.
  * - 응답은 questionId 기준으로 갱신하므로, 위로 올라가 이전 답을 바꾸면 덮어쓴다.
  *
- * 참고: 성향 점수 계산은 백엔드 책임이며, 이 훅은 상위(온보딩 페이지)에서
- * 이미 7개로 추린 배열을 받아 "받은 배열 길이" 기준으로 진행/완료를 판정.
+ * 성향 검사 질문은 최초 7개를 보여준 뒤 동점일 때 미제시 질문을 하나씩 추가한다.
  */
 
-export const useQuiz = ({ questions }: UseQuizParams): UseQuizReturn => {
-  const [answers, setAnswers] = useState<PreferenceAnswer[]>([]);
+export const useQuiz = ({
+  questions,
+  initialQuestionCount = 7,
+}: UseQuizParams): UseQuizReturn => {
+  const [quizState, setQuizState] = useState({
+    answers: [] as PreferenceAnswer[],
+    activeQuestionCount: initialQuestionCount,
+  });
+  const { answers, activeQuestionCount } = quizState;
+
+  const activeQuestions = useMemo(
+    () => questions.slice(0, Math.min(activeQuestionCount, questions.length)),
+    [activeQuestionCount, questions],
+  );
 
   const getSelectedOption = useCallback(
     (questionId: number): number | null =>
@@ -46,36 +62,61 @@ export const useQuiz = ({ questions }: UseQuizParams): UseQuizReturn => {
 
   const selectAnswer = useCallback(
     (questionId: number, optionId: number): void => {
-      setAnswers((prev) => {
-        const exists = prev.some((answer) => answer.questionId === questionId);
-        if (exists) {
-          return prev.map((answer) =>
-            answer.questionId === questionId
-              ? { questionId, optionId }
-              : answer,
-          );
-        }
-        return [...prev, { questionId, optionId }];
+      setQuizState((prev) => {
+        const exists = prev.answers.some(
+          (answer) => answer.questionId === questionId,
+        );
+        const nextAnswers = exists
+          ? prev.answers.map((answer) =>
+              answer.questionId === questionId
+                ? { questionId, optionId }
+                : answer,
+            )
+          : [...prev.answers, { questionId, optionId }];
+        const activeQuestionCount = Math.min(
+          prev.activeQuestionCount,
+          questions.length,
+        );
+        const isTie =
+          nextAnswers.length === activeQuestionCount &&
+          hasPreferenceTie(computePreference(questions, nextAnswers));
+
+        return {
+          answers: nextAnswers,
+          activeQuestionCount:
+            isTie && activeQuestionCount < questions.length
+              ? activeQuestionCount + 1
+              : prev.activeQuestionCount,
+        };
       });
     },
-    [],
+    [questions],
   );
 
   const answeredCount = answers.length;
 
+  const isTie = useMemo(() => {
+    if (answeredCount !== activeQuestions.length) return false;
+    return hasPreferenceTie(computePreference(questions, answers));
+  }, [activeQuestions.length, answeredCount, answers, questions]);
+
   const visibleQuestions = useMemo(
-    () => questions.slice(0, answeredCount + 1),
-    [questions, answeredCount],
+    () => activeQuestions.slice(0, answeredCount + 1),
+    [activeQuestions, answeredCount],
   );
 
   const progress = useMemo(
     () =>
-      questions.length === 0 ? 0 : (answeredCount / questions.length) * 100,
-    [answeredCount, questions.length],
+      activeQuestions.length === 0
+        ? 0
+        : (answeredCount / activeQuestions.length) * 100,
+    [activeQuestions.length, answeredCount],
   );
 
   const isCompleted =
-    questions.length > 0 && answeredCount === questions.length;
+    activeQuestions.length > 0 &&
+    answeredCount === activeQuestions.length &&
+    (!isTie || activeQuestions.length >= questions.length);
 
   return {
     answers,

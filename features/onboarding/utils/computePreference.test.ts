@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-import { computePreference } from "./computePreference";
-import type {
-  PreferenceQuestion,
-  PreferenceAnswer,
-} from "@/types/preference";
+import { computePreference, hasPreferenceTie } from "./computePreference";
+import type { PreferenceQuestion, PreferenceAnswer } from "@/types/preference";
 
 const questions: PreferenceQuestion[] = [
   {
@@ -42,7 +39,9 @@ describe("computePreference", () => {
       { questionId: 1, optionId: 11 }, // thinker +2
       { questionId: 2, optionId: 22 }, // artist +1
     ];
-    expect(computePreference(questions, answers).preferenceType).toBe("THINKER");
+    expect(computePreference(questions, answers).preferenceType).toBe(
+      "THINKER",
+    );
   });
 
   it("답변이 없으면 모두 0점, 기본 유형은 THINKER", () => {
@@ -56,5 +55,24 @@ describe("computePreference", () => {
       { questionId: 1, optionId: 999 },
     ]);
     expect(result.foodieScore).toBe(0);
+  });
+
+  it("최고 점수가 여러 유형이면 동점으로 판정한다", () => {
+    const tieQuestions: PreferenceQuestion[] = [
+      questions[0],
+      {
+        ...questions[1],
+        options: [
+          questions[1].options[0],
+          { ...questions[1].options[1], artistWeight: 2 },
+        ],
+      },
+    ];
+    const result = computePreference(tieQuestions, [
+      { questionId: 1, optionId: 11 },
+      { questionId: 2, optionId: 22 },
+    ]);
+
+    expect(hasPreferenceTie(result)).toBe(true);
   });
 });
