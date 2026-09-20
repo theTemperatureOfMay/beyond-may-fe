@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import ChevronRight from "@/components/ui/icons/ChevronRight";
 import { postLogout } from "@/services/api/auth/authApi";
@@ -27,6 +28,7 @@ const MENU_ITEM_CLASS =
  * 마운트되므로 세션에 닉네임이 있다고 가정한다.
  */
 const SidebarProfileMenu = ({ mbtiName }: SidebarProfileMenuProps) => {
+  const router = useRouter();
   const nickname = useSessionStore((state) => state.nickname);
   const identificationCode = useSessionStore(
     (state) => state.identificationCode,
@@ -55,6 +57,8 @@ const SidebarProfileMenu = ({ mbtiName }: SidebarProfileMenuProps) => {
     await postLogout().catch(() => undefined);
     localStorage.removeItem("accessToken");
     clearSession();
+    // 로그아웃한 화면(장소 선택 등)에 남지 않고 항상 홈으로 나간다.
+    router.replace("/?home=1");
   };
 
   return (
