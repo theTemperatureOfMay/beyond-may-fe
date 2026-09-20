@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import AppHeader from "@/components/layout/AppHeader";
 import Button from "@/components/ui/Button";
 import { getCourses } from "@/services/api/course/courseApi";
+import { getExplorations } from "@/services/api/exploration/explorationApi";
 import { QUERY_KEYS } from "@/services/constant/queryKey";
 import type { CourseSummary, CourseStatus } from "@/types/course";
 
@@ -25,10 +26,40 @@ const getCourseAction = (course: CourseSummary) => ({
 });
 
 const CoursePage = () => {
-  const { data, isLoading, isError, refetch } = useQuery({
+  const {
+    data,
+    isLoading: isCoursesLoading,
+    isError: isCoursesError,
+    refetch: refetchCourses,
+  } = useQuery({
     queryKey: QUERY_KEYS.COURSE.LIST(),
     queryFn: getCourses,
   });
+  const {
+    data: ongoingData,
+    isLoading: isOngoingLoading,
+    isError: isOngoingError,
+    refetch: refetchOngoing,
+  } = useQuery({
+    queryKey: QUERY_KEYS.EXPLORATION.LIST("ONGOING"),
+    queryFn: () => getExplorations("ONGOING"),
+  });
+
+  const isLoading = isCoursesLoading || isOngoingLoading;
+  const isError = isCoursesError || isOngoingError;
+  const activeOngoingCourseIds = new Set(
+    ongoingData?.explorations.map((exploration) => exploration.courseId),
+  );
+  const visibleCourses = data?.courses.filter(
+    (course) =>
+      course.explorationStatus !== "ONGOING" ||
+      activeOngoingCourseIds.has(course.courseId),
+  );
+
+  const refetch = () => {
+    void refetchCourses();
+    void refetchOngoing();
+  };
 
   return (
     <main className="bg-neutral-01 mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
@@ -82,7 +113,7 @@ const CoursePage = () => {
         </section>
       )}
 
-      {!isLoading && !isError && data?.courses.length === 0 && (
+      {!isLoading && !isError && visibleCourses?.length === 0 && (
         <section className="flex flex-1 flex-col items-center justify-center px-8 pb-20 text-center">
           <div
             className="bg-primary-04 flex h-16 w-16 items-center justify-center rounded-full text-[24px]"
@@ -99,9 +130,9 @@ const CoursePage = () => {
         </section>
       )}
 
-      {data && data.courses.length > 0 && (
+      {visibleCourses && visibleCourses.length > 0 && (
         <ul className="space-y-4 px-6 pb-8">
-          {data.courses.map((course) => {
+          {visibleCourses.map((course) => {
             const action = getCourseAction(course);
 
             return (
@@ -152,7 +183,7 @@ const CoursePage = () => {
       <div className="sticky bottom-0 mt-auto border-t border-black/5 bg-white/95 px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))] backdrop-blur">
         <Link
           href="/places"
-          className="bg-primary-08 text-white-01 focus-visible:outline-primary-03 flex min-h-12 w-full items-center justify-center rounded-full px-5 text-[15px] font-semibold"
+          className="bg-neutral-07 text-neutral-01 focus-visible:outline-primary-03 flex min-h-12 w-full items-center justify-center rounded-full px-5 text-[15px] font-semibold"
         >
           새 코스 만들기
         </Link>
