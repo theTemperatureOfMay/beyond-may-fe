@@ -28,6 +28,7 @@ import TeamParticipantsSheet from "@/features/explore/components/TeamParticipant
 import NearbyPlacesSheet from "@/features/explore/components/NearbyPlacesSheet";
 import NearbyEmptyToast from "@/features/explore/components/NearbyEmptyToast";
 import LocationSharingModal from "@/features/explore/components/LocationSharingModal";
+import MapCompletionCelebration from "@/features/explore/components/MapCompletionCelebration";
 import { useQueryClient } from "@tanstack/react-query";
 import PlaceDetailContainer from "@/features/explore/components/PlaceDetailContainer";
 import { QUERY_KEYS } from "@/services/constant/queryKey";
@@ -52,7 +53,7 @@ interface ExploreMapPageProps {
 
 /**
  * 팀 탐험 지도 화면 (4.3.1).
- * 코스 핀 + 방문 인증 + 현재 위치 + 하단 시트(다음 목적지·진행률) + 도보 길찾기.
+ * 코스 핀 + 방문 인증 + 현재 위치 + 하단 시트 + 도보 길찾기 + 완료 축하 연출.
  */
 const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const { courseId } = use(params);
@@ -84,7 +85,6 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const autoTourTimerRef = useRef<number | null>(null);
   const autoTourIndexRef = useRef(0);
 
-  // 도보 길찾기 — 켜진 전체 경로 path 보관 (걸어온 만큼 trim은 렌더 시 계산)
   const [walkRoutePath, setWalkRoutePath] = useState<LatLng[] | null>(null);
   const [walkRouteSummary, setWalkRouteSummary] = useState<string | null>(null);
   const walkRouteMutation = useGetWalkRouteMutation();
@@ -99,7 +99,6 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const { data: explorationStatus } =
     useGetExplorationStatusQuery(explorationIdStr);
 
-  // STOMP 연결 (구독: visits·locations·events) — 진행 중(ONGOING) 탐험일 때만 연결
   const { sendLocation } = useExplorationSocket({
     explorationId: explorationId ?? 0,
     token:
@@ -224,7 +223,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const myLocation =
     coordinates && isAccurate ? toLatLng(coordinates) : undefined;
 
-  // 걸어온 만큼 지운 남은 경로 (켜진 경로 + 현재 위치 있을 때만 trim)
+  // 전체 방문 완료 = 미방문 장소 없음(nextPlace null) + 장소가 하나라도 있음
+  const isAllVisited = course.places.length > 0 && nextPlace === null;
+
   const displayRoute =
     walkRoutePath && myLocation
       ? getRemainingRoute(walkRoutePath, myLocation)
@@ -235,7 +236,6 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
     setWalkRouteSummary(null);
   };
 
-  // 도보 길찾기 토글
   const handleWalkRoute = (): void => {
     if (walkRoutePath) {
       clearWalkRoute();
@@ -340,13 +340,11 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const isOngoing = explorationStatus?.status === "ONGOING";
   const canUseNearby = coordinates != null && isInGwangju(coordinates);
   const isOutOfGwangju = coordinates != null && !isInGwangju(coordinates);
-  // 광주 밖이거나 위치 권한 거부 → 심사/데모용 위치 체험 진입 배너
   const showSimulationBanner =
     !isSimulationEnabled && (isOutOfGwangju || geoPermission === "denied");
   const showEmptyToast =
     isNearbyRequested && isNearbySuccess && nearbyPlaces.length === 0;
 
-  // 도보 길찾기 비활성: 좌표 없음 / 다음 목적지 없음(완주) / 광주 밖
   const walkRouteDisabled = !myLocation || !nextPlace || isOutOfGwangju;
 
   return (
@@ -373,7 +371,6 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
         onOpenMenu={() => setIsMenuOpen(true)}
       />
 
-      {/* 하단 시트 — 지도 버튼(내 위치·도보 길찾기)을 시트 위에 얹어 전달 */}
       <ExploreBottomSheet
         mapActions={
           <>
@@ -463,6 +460,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
           setSelectedPlaceId(null);
         }}
       />
+
+      {/* 전체 방문 완료 → 색채 축하 연출 (위로 스와이프하면 홈) */}
+      {isAllVisited && <MapCompletionCelebration />}
     </div>
   );
 };
