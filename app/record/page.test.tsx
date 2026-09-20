@@ -5,15 +5,25 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import RecordPage from "./page";
 import SidebarProfileMenu from "@/components/layout/sidebar/SidebarProfileMenu";
+import { postLogout } from "@/services/api/auth/authApi";
 import { getExplorations } from "@/services/api/exploration/explorationApi";
 import useSessionStore from "@/stores/sessionStore";
 import type { ExplorationSummary } from "@/types/exploration";
 
+const replaceMock = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: replaceMock }),
+}));
+vi.mock("@/services/api/auth/authApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/api/auth/authApi")>()),
+  postLogout: vi.fn(),
+}));
 vi.mock("@/components/layout/AppHeader", () => ({ default: () => null }));
 vi.mock("@/features/onboarding/hooks/useGetMyPreferenceQuery", () => ({
   default: () => ({ data: undefined }),
@@ -74,6 +84,15 @@ it("사이드바는 기존 개인 메뉴와 별도 설정을 표시한다", () =
   expect(
     screen.queryByRole("link", { name: "사용자 정보" }),
   ).not.toBeInTheDocument();
+});
+
+it("로그아웃하면 세션을 지우고 홈으로 이동한다", async () => {
+  useSessionStore.getState().setSession("테스트", 1);
+  vi.mocked(postLogout).mockResolvedValue(undefined);
+  render(<SidebarProfileMenu />);
+  fireEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+  await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/?home=1"));
+  expect(useSessionStore.getState().isLoggedIn).toBe(false);
 });
 
 it.each([
