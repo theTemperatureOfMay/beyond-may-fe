@@ -1,36 +1,106 @@
-import type { LatLng } from "@/types/map";
+import type { LatLng, TransitRouteStop } from "@/types/map";
 
-/** Tmap 보행자 경로 요청 (좌표는 문자열로 보냄 — 문서 예시 기준) */
-export interface PedestrianRouteRequest {
-  startX: string;
-  startY: string;
-  endX: string;
-  endY: string;
-  startName: string; // URL 인코딩은 호출 함수에서 처리
-  endName: string;
+/** 백엔드 길찾기 API 요청 */
+export interface WalkingRouteRequest {
+  start: LatLng;
+  end: LatLng;
 }
 
-/** Tmap GeoJSON 응답 — 우리가 쓰는 필드만 정의 */
-export interface TmapFeature {
-  geometry: {
-    type: "Point" | "LineString";
-    coordinates: number[] | number[][]; // Point=[lng,lat], LineString=[[lng,lat],...]
+interface KakaoRouteProperties {
+  totalDistance: number;
+  totalTime: number;
+}
+
+interface KakaoRouteStep {
+  path: {
+    points: [number, number][]; // [lng, lat]
   };
   properties: {
-    totalDistance?: number; // SP(출발) feature에만 (m)
-    totalTime?: number; // SP feature에만 (초)
-    pointType?: string;
+    distance: number;
+    guidance: string;
+    time: number;
+    x: number;
+    y: number;
   };
 }
 
-export interface TmapPedestrianResponse {
-  type: "FeatureCollection";
-  features: TmapFeature[];
+interface KakaoWalkingLeg {
+  steps: KakaoRouteStep[];
 }
 
-/** 파싱 후 앱에서 실제 사용하는 형태 */
+export interface KakaoWalkingRoute {
+  properties: KakaoRouteProperties;
+  legs: KakaoWalkingLeg[];
+}
+
+interface KakaoPublicTransitStep {
+  path: {
+    points: [number, number][]; // [lng, lat]
+  };
+  properties: {
+    distance: number;
+    guidance: string;
+    time: number;
+    type: string;
+    stops?: Array<{ name: string }>;
+    vehicles?: Array<{ name: string; type: string }>;
+  };
+}
+
+export interface KakaoPublicTransitRoute {
+  properties: KakaoRouteProperties & {
+    type: string;
+    transfers: number;
+    fare?: { value?: number } | number;
+  };
+  steps: KakaoPublicTransitStep[];
+}
+
+export interface RouteResponse {
+  walking: KakaoWalkingRoute | null;
+  publicTransit: KakaoPublicTransitRoute | null;
+}
+
+/** 백엔드 응답에서 지도 렌더링에 필요한 도보 경로만 추출한 형태 */
 export interface WalkRoute {
-  path: LatLng[]; // 지도 Polyline에 그대로 넘김
-  totalDistance: number; // m
-  totalTime: number; // 초
+  path: LatLng[];
+  totalDistance: number;
+  totalTime: number;
+}
+
+export interface RouteStep {
+  guidance: string;
+  distance: number;
+  time: number;
+  type?: string;
+  stops?: string[];
+  vehicles?: string[];
+}
+
+export interface PublicTransitRouteSegment {
+  path: LatLng[];
+  strokeStyle: "solid" | "shortdash";
+}
+
+export interface RouteOption extends WalkRoute {
+  steps: RouteStep[];
+}
+
+export interface PublicTransitRoute extends RouteOption {
+  type: string;
+  transfers: number;
+  fare?: number;
+  segments: PublicTransitRouteSegment[];
+  transitStops: TransitRouteStop[];
+}
+
+/** 한 번의 백엔드 조회로 받은 이동수단별 경로 */
+export interface Directions {
+  walking: RouteOption | null;
+  publicTransit: PublicTransitRoute | null;
+}
+
+/** 코스 도보 구간. destinationIndex는 도착 장소의 정렬된 인덱스다. */
+export interface CourseWalkRouteSegment extends WalkRoute {
+  destinationIndex: number;
 }

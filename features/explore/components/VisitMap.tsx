@@ -3,7 +3,13 @@
 import { useState, useImperativeHandle, forwardRef } from "react";
 import KakaoMap from "@/components/map/Map";
 import type { CoursePlace } from "@/types/course";
-import type { MapMarker, LatLng } from "@/types/map";
+import type {
+  MapMarker,
+  LatLng,
+  MapRouteSegment,
+  PlaceCategory,
+  TransitRouteStop,
+} from "@/types/map";
 
 export interface VisitMapHandle {
   /** 지도 중심을 내 위치로 이동 (하단 시트의 내 위치 버튼에서 호출) */
@@ -18,6 +24,12 @@ interface VisitMapProps {
   /** 다음 목적지 placeId — 이 핀만 깃발(current)로 표시 */
   currentPlaceId?: number | null;
   route?: LatLng[];
+  routeCategory?: PlaceCategory;
+  routeSegments?: MapRouteSegment[];
+  transitStops?: TransitRouteStop[];
+  /** 코스에 포함되지 않은 주변 추천 장소의 길찾기 목적지 핀 */
+  destinationMarker?: MapMarker;
+  fitBoundsKey?: string;
   onMarkerClick?: (placeId: number) => void;
 }
 
@@ -36,6 +48,11 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       visitedPlaceIds = [],
       currentPlaceId,
       route,
+      routeCategory,
+      routeSegments,
+      transitStops,
+      destinationMarker,
+      fitBoundsKey,
       onMarkerClick,
     },
     ref,
@@ -66,6 +83,12 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
         category: place.travelMbtiType,
       };
     });
+    const displayMarkers = destinationMarker
+      ? [
+          ...markers.filter((marker) => marker.id !== destinationMarker.id),
+          destinationMarker,
+        ]
+      : markers;
 
     const handleMarkerClick = (markerId: string): void => {
       const numericId = Number(markerId);
@@ -85,9 +108,17 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       <div className="relative h-dvh w-full">
         <KakaoMap
           center={center}
-          markers={markers}
+          markers={displayMarkers}
           myLocation={myLocation}
-          route={route}
+          route={routeCategory || routeSegments ? undefined : route}
+          routeSegments={
+            routeSegments ??
+            (route && routeCategory
+              ? [{ path: route, category: routeCategory }]
+              : undefined)
+          }
+          transitStops={transitStops}
+          fitBoundsKey={fitBoundsKey}
           panTo={panTo}
           panToNonce={panToNonce}
           glow
