@@ -14,6 +14,7 @@ import Modal from "@/components/ui/Modal";
 import Close from "@/components/ui/icons/Close";
 import ImageIcon from "@/components/ui/icons/Image";
 import useGenerateCourseMutation from "@/features/course/hooks/useGenerateCourseMutation";
+import MaxPlacesModal from "@/features/course/components/MaxPlacesModal";
 import TimeoutState from "@/components/ui/TimeoutState";
 import { getApiCode } from "@/services/lib/axios";
 import PlaceCardDeck from "@/features/places/components/PlaceCardDeck";
@@ -25,6 +26,7 @@ import useCreateRecommendationSetMutation from "@/features/places/hooks/useCreat
 import useReplaceBatchReactionsMutation from "@/features/places/hooks/useReplaceBatchReactionsMutation";
 import {
   getCalculatedEndDate,
+  getMaximumPlaceCount,
   getMinimumSelectionCount,
   isValidTravelPeriod,
   TRAVEL_SCHEDULE_OPTIONS,
@@ -98,6 +100,7 @@ export default function PlacesPage() {
   );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSelectionOpen, setIsSelectionOpen] = useState(false);
+  const [isMaxPlacesOpen, setIsMaxPlacesOpen] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
   const [detailSource, setDetailSource] = useState<DetailSource>("deck");
   const [hasSeenGuide, setHasSeenGuide] = useState(
@@ -163,6 +166,8 @@ export default function PlacesPage() {
     currentBatch?.places.filter(
       (place) => !batchSwipedIds.includes(place.placeId),
     ) ?? [];
+  const maximumPlaceCount = getMaximumPlaceCount(travelSchedule);
+  const isLikeBlocked = allLikedPlaces.length >= maximumPlaceCount;
   const isRecommendationError =
     isCreateRecommendationError || isBatchReactionsError;
 
@@ -346,6 +351,11 @@ export default function PlacesPage() {
   const handleSwipe = (direction: "like" | "dislike"): void => {
     const topPlace = remainingPlaces[0];
     if (!topPlace || !currentBatch) return;
+    // 상세 시트의 좋아요 등 카드덱을 거치지 않는 경로도 막는다
+    if (direction === "like" && isLikeBlocked) {
+      setIsMaxPlacesOpen(true);
+      return;
+    }
     const nextSwipedIds = [...batchSwipedIds, topPlace.placeId];
     const nextLikedIds = new Set(batchLikedIds);
     if (direction === "like") nextLikedIds.add(topPlace.placeId);
@@ -610,6 +620,8 @@ export default function PlacesPage() {
                 onSwipe={handleSwipe}
                 onUndo={handleUndo}
                 canUndo={batchSwipedIds.length > 0 && !isSubmittingBatch}
+                isLikeBlocked={isLikeBlocked}
+                onLikeBlocked={() => setIsMaxPlacesOpen(true)}
               />
             )}
 
@@ -724,6 +736,12 @@ export default function PlacesPage() {
       <Sidebar open={isMenuOpen} onClose={() => setIsMenuOpen(false)}>
         <SidebarProfileMenu />
       </Sidebar>
+
+      <MaxPlacesModal
+        open={isMaxPlacesOpen}
+        onClose={() => setIsMaxPlacesOpen(false)}
+        maxCount={maximumPlaceCount}
+      />
 
       {isCourseGenerating && (
         <div className="bg-neutral-01 fixed inset-0 z-80 mx-auto flex w-full max-w-[430px] flex-col">
