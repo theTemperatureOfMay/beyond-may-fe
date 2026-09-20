@@ -46,25 +46,23 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
     const [panTo, setPanTo] = useState<LatLng | null>(null);
     const [panToNonce, setPanToNonce] = useState(0);
 
-    // 미방문 장소만 visitOrder 순으로 모아 "남은 순서" 1,2,3…을 매긴다.
-    // 방문 완료 장소는 번호 없이 체크만 표시되므로 여기서 제외.
-    const remainingOrder = new Map<number, number>();
+    // 전체 코스 기준으로 절대 순번 1, 2, 3... 을 매긴다.
+    const absoluteOrder = new Map<number, number>();
     [...places]
-      .filter((place) => !visitedPlaceIds.includes(place.placeId))
       .sort((a, b) => a.dayNumber - b.dayNumber || a.visitOrder - b.visitOrder)
       .forEach((place, index) => {
-        remainingOrder.set(place.placeId, index + 1);
+        absoluteOrder.set(place.placeId, index + 1);
       });
 
+    // 전체 코스 기준으로 절대 순번 1, 2, 3... 을 매긴다.
     const markers: MapMarker[] = places.map((place) => {
       const isVisited = visitedPlaceIds.includes(place.placeId);
       return {
         id: String(place.placeId),
         position: { lat: place.latitude, lng: place.longitude },
-        // 남은 순서 (방문한 곳은 undefined → MapPin이 체크만 그림)
-        order: remainingOrder.get(place.placeId),
+        // 고정된 전체 순번을 사용
+        order: absoluteOrder.get(place.placeId),
         visited: isVisited,
-        // 방문 안 했고 + 다음 목적지인 핀만 깃발 (항상 남은 순서 1번)
         justVisited: justVisitedIds.includes(place.placeId),
         isCurrent: !isVisited && place.placeId === currentPlaceId,
         category: place.travelMbtiType,
