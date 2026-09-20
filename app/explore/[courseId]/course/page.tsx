@@ -88,6 +88,8 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   const isAllVisited = totalCount > 0 && completedCount >= totalCount;
 
   const isExplorationCompleted = explorationStatus?.status === "COMPLETED";
+  const canCompleteEarly =
+    explorationStatus?.permissions.canCompleteEarly ?? false;
 
   const handleComplete = () => {
     if (!explorationIdStr) return;
@@ -144,7 +146,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
       </div>
 
       {/* 코스 완료하기 */}
-      {!isExplorationCompleted && (
+      {!isExplorationCompleted && canCompleteEarly && (
         <div className="px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
           <button
             type="button"
