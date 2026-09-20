@@ -8,7 +8,10 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import CourseTimelineView from "@/features/course/components/CourseTimelineView";
 import useConfirmCourseMutation from "@/features/course/hooks/useConfirmCourseMutation";
+import DuplicateExplorationState from "@/features/explore/components/DuplicateExplorationState";
 import { useGetCourseDetailQuery } from "@/hooks/queries/useGetCourseDetailQuery";
+import { getApiCode, getApiErrorData } from "@/services/lib/axios";
+import type { DuplicateExplorationErrorData } from "@/types/exploration";
 
 import Sidebar from "@/components/layout/sidebar/Sidebar";
 import SidebarProfileMenu from "@/components/layout/sidebar/SidebarProfileMenu";
@@ -28,6 +31,8 @@ const CourseDetailPage = ({ params, searchParams }: CourseDetailPageProps) => {
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [duplicateData, setDuplicateData] =
+    useState<DuplicateExplorationErrorData | null>(null);
   const nickname = useSessionStore((state) => state.nickname);
 
   const {
@@ -46,6 +51,13 @@ const CourseDetailPage = ({ params, searchParams }: CourseDetailPageProps) => {
   const handleConfirmCourse = () => {
     confirmCourse(courseId, {
       onSuccess: () => router.push(`/course/${courseId}`),
+      onError: (error) => {
+        if (getApiCode(error) !== "EXPLORATION409") return;
+        const data = getApiErrorData<DuplicateExplorationErrorData>(error);
+        if (!data) return;
+        setIsConfirmOpen(false);
+        setDuplicateData(data);
+      },
     });
   };
 
@@ -155,6 +167,17 @@ const CourseDetailPage = ({ params, searchParams }: CourseDetailPageProps) => {
           </Button>
         </div>
       </Modal>
+
+      {duplicateData && (
+        <DuplicateExplorationState
+          activeExplorationId={duplicateData.activeExplorationId}
+          purpose="confirm"
+          onLeaveSuccess={() => {
+            setDuplicateData(null);
+            handleConfirmCourse();
+          }}
+        />
+      )}
 
       <Sidebar open={isMenuOpen} onClose={() => setIsMenuOpen(false)}>
         {nickname ? <SidebarProfileMenu /> : <SidebarLoginForm />}
