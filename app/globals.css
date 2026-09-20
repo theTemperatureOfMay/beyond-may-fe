@@ -256,6 +256,12 @@ img[src*="mts.daumcdn.net"] {
   filter: grayscale(1);
 }
 
+/* 완성 순간: 지도 흑백 해제 (body.map-completed 토글 시 컬러로 물듦) */
+body.map-completed img[src*="mts.daumcdn.net"] {
+  filter: grayscale(0);
+  transition: filter 4s ease-in-out;
+}
+
 /* 방문 완료 glow — 은은하게 호흡하듯 서서히 커졌다 작아지며 파장이 퍼지는 모션 */
 @keyframes glow-breath {
   0%,

@@ -91,7 +91,7 @@ const KakaoMap = ({
   }, [map, panTo, panToNonce]);
 
   // glow 크기 — 지도상 GLOW_RADIUS_METERS 반경을 현재 줌의 px로 변환 (줌 무관 일관)
-  const [glowSize, setGlowSize] = useState(240);
+  const [glowSize, setGlowSize] = useState(300);
   useEffect(() => {
     if (!map) return;
     const updateGlowSize = () => {
@@ -106,7 +106,7 @@ const KakaoMap = ({
       const mapHeight = map.getNode().clientHeight;
       // raw를 그대로 쓰면 확대 시 급증 → sqrt로 완만한 곡선. 화면 크기와 섞어 스케일 맞춤
       const eased = Math.sqrt(raw) * Math.sqrt(mapHeight) * 0.65;
-      setGlowSize(Math.max(eased, 250));
+      setGlowSize(Math.max(eased, 300));
     };
     updateGlowSize();
     window.kakao.maps.event.addListener(map, "zoom_changed", updateGlowSize);
