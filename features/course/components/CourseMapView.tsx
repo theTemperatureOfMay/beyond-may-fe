@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import KakaoMap from "@/components/map/Map";
 import AppHeader from "@/components/layout/AppHeader";
+import CourseBottomSheet from "@/features/course/components/CourseBottomSheet";
 import CourseListFallback from "@/features/course/components/CourseListFallback";
 import CourseSummaryPanel from "@/features/course/components/CourseSummaryPanel";
 import { getCourseMapData } from "@/features/course/utils/courseMapAdapter";
@@ -20,12 +21,15 @@ interface CourseMapViewProps {
   onRedesignClick?: () => void;
   isConfirming?: boolean;
   hasConfirmError?: boolean;
+  /** 확정(CONFIRMED) 코스: 요약 패널 대신 올라오는 하단 시트를 쓴다 */
+  isConfirmed?: boolean;
 }
 
 /**
  * 추천 코스 지도 화면 본체.
  * 상단 영역(지도 또는 폴백)이 남는 공간을 채우고,
- * 하단에 요약 패널이 고정된다. 지도 로드 실패 시 폴백으로 교체한다.
+ * 하단에 요약 패널(DRAFT) 또는 하단 시트(CONFIRMED)가 놓인다.
+ * 지도 로드 실패 시 폴백으로 교체한다.
  */
 const CourseMapView = ({
   course,
@@ -38,6 +42,7 @@ const CourseMapView = ({
   onRedesignClick,
   isConfirming,
   hasConfirmError,
+  isConfirmed = false,
 }: CourseMapViewProps) => {
   const [hasMapError, setHasMapError] = useState(false);
   const { markers, route, center } = getCourseMapData(course.places);
@@ -67,17 +72,27 @@ const CourseMapView = ({
         )}
       </div>
 
-      <CourseSummaryPanel
-        course={course}
-        onDetailClick={onDetailClick}
-        onConfirmClick={onConfirmClick}
-        onShareClick={onShareClick}
-        onStartClick={onStartClick}
-        startLabel={startLabel}
-        onRedesignClick={onRedesignClick}
-        isConfirming={isConfirming}
-        hasConfirmError={hasConfirmError}
-      />
+      {isConfirmed ? (
+        <CourseBottomSheet
+          course={course}
+          onStartClick={onStartClick}
+          startLabel={startLabel}
+          onShareClick={onShareClick}
+          onRedesignClick={onRedesignClick}
+        />
+      ) : (
+        <CourseSummaryPanel
+          course={course}
+          onDetailClick={onDetailClick}
+          onConfirmClick={onConfirmClick}
+          onShareClick={onShareClick}
+          onStartClick={onStartClick}
+          startLabel={startLabel}
+          onRedesignClick={onRedesignClick}
+          isConfirming={isConfirming}
+          hasConfirmError={hasConfirmError}
+        />
+      )}
     </main>
   );
 };
