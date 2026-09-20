@@ -4,6 +4,7 @@ import { useState, useImperativeHandle, forwardRef } from "react";
 import KakaoMap from "@/components/map/Map";
 import type { CoursePlace } from "@/types/course";
 import type { MapMarker, LatLng } from "@/types/map";
+import type { LocationUpdatedData } from "@/types/socket";
 
 export interface VisitMapHandle {
   /** 지도 중심을 내 위치로 이동 (하단 시트의 내 위치 버튼에서 호출) */
@@ -18,6 +19,7 @@ interface VisitMapProps {
   /** 다음 목적지 placeId — 이 핀만 깃발(current)로 표시 */
   currentPlaceId?: number | null;
   route?: LatLng[];
+  teammates?: LocationUpdatedData[];
   onMarkerClick?: (placeId: number) => void;
 }
 
@@ -37,6 +39,7 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       currentPlaceId,
       route,
       onMarkerClick,
+      teammates,
     },
     ref,
   ) => {
@@ -67,6 +70,13 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       };
     });
 
+    const memberMarkers: MapMarker[] = (teammates ?? []).map((t) => ({
+      id: `member-${t.participantId}`,
+      position: { lat: t.latitude, lng: t.longitude },
+      variant: "member",
+      label: t.displayName,
+    }));
+
     const handleMarkerClick = (markerId: string): void => {
       const numericId = Number(markerId);
       if (Number.isNaN(numericId)) return;
@@ -85,7 +95,7 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       <div className="relative h-dvh w-full">
         <KakaoMap
           center={center}
-          markers={markers}
+          markers={[...markers, ...memberMarkers]}
           myLocation={myLocation}
           route={route}
           panTo={panTo}

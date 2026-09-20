@@ -12,6 +12,7 @@ import {
   formatWalkRouteSummary,
 } from "@/lib/geo/distance";
 import { getRemainingRoute } from "@/lib/geo/trimRoute";
+import type { LocationUpdatedData } from "@/types/socket";
 
 import useExplorationSocket from "@/features/explore/hooks/useExplorationSocket";
 import Toast from "@/components/ui/Toast";
@@ -64,6 +65,10 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNearbyRequested, setIsNearbyRequested] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
+  const [teammates, setTeammates] = useState<Map<number, LocationUpdatedData>>(
+    new Map(),
+  );
+  const myParticipantIdRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
 
   const visitMapRef = useRef<VisitMapHandle>(null);
@@ -112,10 +117,25 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
       });
     },
     onLocation: (payload) => {
-      console.log("팀원 위치:", payload);
+      const loc = payload.data;
+      if (loc.participantId === myParticipantIdRef.current) return; // 내 위치는 myLocation으로 이미 표시
+      setTeammates((prev) => {
+        const next = new Map(prev);
+        next.set(loc.participantId, loc);
+        return next;
+      });
     },
     onEvent: (payload) => {
-      console.log("이벤트:", payload);
+      if (
+        payload.eventType === "LOCATION_SHARING_CHANGED" &&
+        !payload.data.enabled
+      ) {
+        setTeammates((prev) => {
+          const next = new Map(prev);
+          next.delete(payload.data.participantId);
+          return next;
+        });
+      }
     },
     onStompError: (code) => {
       setStompErrorMessage(getStompErrorMessage(code));
@@ -126,6 +146,11 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  useEffect(() => {
+    myParticipantIdRef.current =
+      explorationStatus?.currentParticipant.participantId ?? null;
+  }, [explorationStatus]);
 
   useEffect(() => {
     if (!coordinates || explorationId === null) return;
@@ -341,7 +366,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const isOutOfGwangju = coordinates != null && !isInGwangju(coordinates);
   // 광주 밖이거나 위치 권한 거부 → 심사/데모용 위치 체험 진입 배너
   const showSimulationBanner =
-    !isSimulationEnabled && (isOutOfGwangju || geoPermission === "denied");
+    isOngoing &&
+    !isSimulationEnabled &&
+    (isOutOfGwangju || geoPermission === "denied");
   const showEmptyToast =
     isNearbyRequested && isNearbySuccess && nearbyPlaces.length === 0;
 
@@ -359,6 +386,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
         currentPlaceId={nextPlace?.placeId ?? null}
         route={displayRoute}
         onMarkerClick={setSelectedPlaceId}
+        teammates={[...teammates.values()]}
       />
 
       <ExploreHeader
