@@ -64,6 +64,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNearbyRequested, setIsNearbyRequested] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
+  const [justVisitedIds, setJustVisitedIds] = useState<number[]>([]);
   const queryClient = useQueryClient();
 
   const visitMapRef = useRef<VisitMapHandle>(null);
@@ -305,7 +306,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
             queryClient.invalidateQueries({
               queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
             });
-            // 목적지 방문 인증 = 그 구간 끝 → 도보 길찾기 자동 끔 (a안)
+            setJustVisitedIds((prev) => [...prev, place.placeId]);
             clearWalkRoute();
             goNext();
           },
@@ -356,6 +357,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
         center={myLocation ?? center}
         myLocation={myLocation}
         visitedPlaceIds={initialVisitedPlaceIds}
+        justVisitedIds={justVisitedIds}
         currentPlaceId={nextPlace?.placeId ?? null}
         route={displayRoute}
         onMarkerClick={setSelectedPlaceId}
@@ -455,6 +457,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
           queryClient.invalidateQueries({
             queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
           });
+          if (selectedPlaceId !== null) {
+            setJustVisitedIds((prev) => [...prev, selectedPlaceId]);
+          }
           setSelectedPlaceId(null);
         }}
       />

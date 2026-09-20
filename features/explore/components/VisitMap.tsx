@@ -17,6 +17,8 @@ interface VisitMapProps {
   visitedPlaceIds?: number[];
   /** 다음 목적지 placeId — 이 핀만 깃발(current)로 표시 */
   currentPlaceId?: number | null;
+  /** 방금 방문된 placeId 집합 — glow 등장 애니메이션용 */
+  justVisitedIds?: number[];
   route?: LatLng[];
   onMarkerClick?: (placeId: number) => void;
 }
@@ -35,6 +37,7 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       myLocation,
       visitedPlaceIds = [],
       currentPlaceId,
+      justVisitedIds = [],
       route,
       onMarkerClick,
     },
@@ -62,6 +65,7 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
         order: remainingOrder.get(place.placeId),
         visited: isVisited,
         // 방문 안 했고 + 다음 목적지인 핀만 깃발 (항상 남은 순서 1번)
+        justVisited: justVisitedIds.includes(place.placeId),
         isCurrent: !isVisited && place.placeId === currentPlaceId,
         category: place.travelMbtiType,
       };

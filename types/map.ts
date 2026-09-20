@@ -13,6 +13,8 @@ export interface MapMarker {
   position: LatLng; // 핀 위치
   order?: number; // 코스 순서 번호 (코스 지도용)
   visited?: boolean; // 방문 여부 (탐험·밝힌 지도용)
+  /** 방금 방문 인증된 핀 — glow 등장(emerge) 애니메이션 발동용 */
+  justVisited?: boolean;
   label?: string; // 핀에 띄울 이름
   category?: PlaceCategory; // 핀·glow 색상 결정
   isCurrent?: boolean; // 다음 목적지 (프론트에서 order·visited로 계산)
