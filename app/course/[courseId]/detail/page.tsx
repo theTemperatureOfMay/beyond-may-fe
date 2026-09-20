@@ -118,6 +118,7 @@ const CourseDetailPage = ({ params, searchParams }: CourseDetailPageProps) => {
           .split(",")
           .map((id) => Number(id))
           .filter((id) => !Number.isNaN(id));
+  const isDraft = course.status === "DRAFT";
 
   return (
     <>
@@ -126,18 +127,24 @@ const CourseDetailPage = ({ params, searchParams }: CourseDetailPageProps) => {
         addedPlaceIds={addedPlaceIds}
         onBack={handleBack}
         onOpenMenu={() => setIsMenuOpen(true)}
-        onUseCourse={() => setIsConfirmOpen(true)}
-        isUsingCourse={isConfirming}
-        hasUseCourseError={hasConfirmError}
-        onEditWithAi={() =>
-          router.push(
-            `/course/${courseId}/edit?mode=ai${fromHub ? "&from=hub" : ""}`,
-          )
+        onUseCourse={isDraft ? () => setIsConfirmOpen(true) : undefined}
+        isUsingCourse={isDraft ? isConfirming : false}
+        hasUseCourseError={isDraft ? hasConfirmError : false}
+        onEditWithAi={
+          isDraft
+            ? () =>
+                router.push(
+                  `/course/${courseId}/edit?mode=ai${fromHub ? "&from=hub" : ""}`,
+                )
+            : undefined
         }
-        onEditManually={() =>
-          router.push(
-            `/course/${courseId}/edit?mode=manual${fromHub ? "&from=hub" : ""}`,
-          )
+        onEditManually={
+          isDraft
+            ? () =>
+                router.push(
+                  `/course/${courseId}/edit?mode=manual${fromHub ? "&from=hub" : ""}`,
+                )
+            : undefined
         }
       />
 

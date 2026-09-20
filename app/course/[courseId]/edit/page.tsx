@@ -850,6 +850,35 @@ const CourseEditPage = ({ params, searchParams }: CourseEditPageProps) => {
     );
   }
 
+  if (course.status !== "DRAFT") {
+    return (
+      <main className="bg-neutral-01 mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
+        <AppHeader
+          onBack={handleBack}
+          showMenu={true}
+          onOpenMenu={() => setIsMenuOpen(true)}
+          centerLabel="코스 수정"
+        />
+        <section className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+          <h1 className="text-neutral-07 text-[20px] font-semibold">
+            확정된 코스는 수정할 수 없어요
+          </h1>
+          <p className="text-neutral-04 mt-2 text-[13px] leading-[1.55]">
+            코스 상세에서 확정된 일정을 확인해주세요.
+          </p>
+          <Button
+            variant="solid"
+            size="lg"
+            className="mt-5 w-full"
+            onClick={() => router.replace(`/course/${courseId}`)}
+          >
+            코스 상세 보기
+          </Button>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <>
       <CourseEditor

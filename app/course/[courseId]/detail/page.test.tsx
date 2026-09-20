@@ -18,6 +18,9 @@ const router = vi.hoisted(() => ({
 }));
 const confirmCourse = vi.hoisted(() => vi.fn());
 const leaveExploration = vi.hoisted(() => vi.fn());
+const courseStatus = vi.hoisted(() => ({
+  value: "DRAFT" as "DRAFT" | "CONFIRMED",
+}));
 
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/hooks/queries/useGetCourseDetailQuery", () => ({
@@ -25,7 +28,7 @@ vi.mock("@/hooks/queries/useGetCourseDetailQuery", () => ({
     data: {
       courseId: 4,
       title: "새 코스",
-      status: "DRAFT",
+      status: courseStatus.value,
       travelSchedule: "DAY_TRIP",
       places: [],
     },
@@ -78,16 +81,34 @@ vi.mock("@/features/course/components/CourseTimelineView", () => ({
     onUseCourse,
     isUsingCourse,
     hasUseCourseError,
+    onEditWithAi,
+    onEditManually,
   }: Pick<
     ComponentProps<
       typeof import("@/features/course/components/CourseTimelineView").default
     >,
-    "onUseCourse" | "isUsingCourse" | "hasUseCourseError"
+    | "onUseCourse"
+    | "isUsingCourse"
+    | "hasUseCourseError"
+    | "onEditWithAi"
+    | "onEditManually"
   >) => (
     <div>
-      <button type="button" onClick={onUseCourse} disabled={isUsingCourse}>
-        이 코스 사용
-      </button>
+      {onUseCourse && (
+        <button type="button" onClick={onUseCourse} disabled={isUsingCourse}>
+          이 코스 사용
+        </button>
+      )}
+      {onEditWithAi && (
+        <button type="button" onClick={onEditWithAi}>
+          AI로 다듬기
+        </button>
+      )}
+      {onEditManually && (
+        <button type="button" onClick={onEditManually}>
+          직접 수정
+        </button>
+      )}
       {hasUseCourseError && <p>코스 확정 오류</p>}
     </div>
   ),
@@ -95,6 +116,7 @@ vi.mock("@/features/course/components/CourseTimelineView", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  courseStatus.value = "DRAFT";
 });
 
 afterEach(() => {
@@ -119,6 +141,22 @@ const renderPage = async () => {
     );
   });
 };
+
+it("확정된 코스에서는 확정과 수정 진입을 제공하지 않는다", async () => {
+  courseStatus.value = "CONFIRMED";
+
+  await renderPage();
+
+  expect(
+    screen.queryByRole("button", { name: "이 코스 사용" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "AI로 다듬기" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "직접 수정" }),
+  ).not.toBeInTheDocument();
+});
 
 it("활성 탐험 충돌 후 기존 탐험을 나가고 코스 확정을 재호출한다", async () => {
   await renderPage();
