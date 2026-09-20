@@ -18,6 +18,8 @@ import {
 } from "@/features/record/mockRecords";
 import { getJourneyGradient } from "@/features/record/utils/journeyGradient";
 import { useCaptureImage } from "@/hooks/useCaptureImage";
+import { cn } from "@/lib/cn";
+import { getTravelTypeRingClass } from "@/lib/travelTypeStyles";
 
 const SHARE_VERSIONS = [{ id: "journey", label: "여행 기록" }];
 
@@ -154,7 +156,12 @@ const RecordDetail = ({ record, visitedPlaces = [] }: RecordDetailProps) => {
                   aria-hidden="true"
                 />
               )}
-              <span className="bg-primary-08 text-neutral-01 relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold">
+              <span
+                className={cn(
+                  "bg-primary-08 text-neutral-01 ring-offset-neutral-01 relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ring-2",
+                  getTravelTypeRingClass(place.travelMbtiType),
+                )}
+              >
                 ✓
               </span>
               <div className="border-neutral-03 min-w-0 flex-1 border-b pb-6">
