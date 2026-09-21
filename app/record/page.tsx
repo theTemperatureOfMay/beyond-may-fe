@@ -12,6 +12,8 @@ import { useQueries } from "@tanstack/react-query";
 import { getTeamVisits } from "@/services/api/record/recordApi";
 import { QUERY_KEYS } from "@/services/constant/queryKey";
 import type { TeamVisit } from "@/types/record";
+import { cn } from "@/lib/cn";
+import { getTravelTypeDotClass } from "@/lib/travelTypeStyles";
 import useSessionStore from "@/stores/sessionStore";
 
 type RecordTab = "ongoing" | "completed" | "visits";
@@ -377,6 +379,13 @@ const RecordPage = ({ searchParams }: RecordPageProps) => {
                       </div>
                       <div className="p-3">
                         <p className="text-neutral-07 truncate text-[14px] font-semibold">
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              "mr-1.5 inline-block h-2 w-2 rounded-full align-middle",
+                              getTravelTypeDotClass(visit.place.travelMbtiType),
+                            )}
+                          />
                           {visit.place.name}
                         </p>
                         <p className="text-neutral-04 mt-1 text-[11px]">

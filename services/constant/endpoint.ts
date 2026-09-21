@@ -86,4 +86,7 @@ export const API_ENDPOINTS = {
     /** 방문 기록 저장 (사진·메모) — 같은 키 files로 여러 장, 최대 3장 */
     visitRecord: (visitId: number) => `/api/v1/visits/${visitId}/record`,
   },
+  route: {
+    directions: "/api/v1/routes",
+  },
 } as const;

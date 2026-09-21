@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import KakaoMap from "@/components/map/Map";
 import AppHeader from "@/components/layout/AppHeader";
@@ -8,7 +8,9 @@ import CourseBottomSheet from "@/features/course/components/CourseBottomSheet";
 import CourseListFallback from "@/features/course/components/CourseListFallback";
 import CourseSummaryPanel from "@/features/course/components/CourseSummaryPanel";
 import { getCourseMapData } from "@/features/course/utils/courseMapAdapter";
+import { getWalkingCourseRoute } from "@/services/api/route/routeApi";
 import type { CourseResponse } from "@/types/course";
+import type { MapRouteSegment } from "@/types/map";
 
 interface CourseMapViewProps {
   course: CourseResponse;
@@ -45,7 +47,58 @@ const CourseMapView = ({
   isConfirmed = false,
 }: CourseMapViewProps) => {
   const [hasMapError, setHasMapError] = useState(false);
-  const { markers, route, center } = getCourseMapData(course.places);
+  const [walkingRoute, setWalkingRoute] = useState<{
+    key: string;
+    segments: MapRouteSegment[];
+  } | null>(null);
+  const { markers, center } = getCourseMapData(course.places);
+  const sortedPlaces = useMemo(
+    () =>
+      [...course.places].sort(
+        (a, b) => a.dayNumber - b.dayNumber || a.visitOrder - b.visitOrder,
+      ),
+    [course.places],
+  );
+  const coursePositions = useMemo(
+    () =>
+      sortedPlaces.map(({ latitude, longitude }) => ({
+        lat: latitude,
+        lng: longitude,
+      })),
+    [sortedPlaces],
+  );
+  const courseRouteKey = coursePositions
+    .map(({ lat, lng }) => `${lat},${lng}`)
+    .join("|");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (coursePositions.length < 2) return;
+
+    void getWalkingCourseRoute(coursePositions)
+      .then((routes) => {
+        if (!cancelled) {
+          setWalkingRoute({
+            key: courseRouteKey,
+            segments: routes.map(({ destinationIndex, path }) => ({
+              path,
+              category: sortedPlaces[destinationIndex]?.travelMbtiType,
+            })),
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setWalkingRoute({ key: courseRouteKey, segments: [] });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [coursePositions, courseRouteKey, sortedPlaces]);
+
+  const routeSegments =
+    walkingRoute?.key === courseRouteKey ? walkingRoute.segments : undefined;
 
   return (
     <main className="bg-neutral-01 relative mx-auto flex h-dvh w-full max-w-[430px] flex-col">
@@ -66,7 +119,7 @@ const CourseMapView = ({
           <KakaoMap
             center={center}
             markers={markers}
-            route={route}
+            routeSegments={routeSegments}
             onError={() => setHasMapError(true)}
           />
         )}

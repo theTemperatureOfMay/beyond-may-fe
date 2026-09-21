@@ -21,6 +21,12 @@ import Sidebar from "@/components/layout/sidebar/Sidebar";
 import SidebarLoginForm from "@/components/layout/sidebar/SidebarLoginForm";
 import useSessionStore from "@/stores/sessionStore";
 import { cn } from "@/lib/cn";
+import {
+  TRAVEL_TYPE_DOT_CLASS,
+  TRAVEL_TYPE_LABEL,
+  TRAVEL_TYPE_SURFACE_CLASS,
+} from "@/lib/travelTypeStyles";
+import type { TravelMbtiType } from "@/types/course";
 import Button from "@/components/ui/Button";
 
 interface ExplorePageProps {
@@ -170,6 +176,13 @@ const ExplorePage = ({ params }: ExplorePageProps) => {
   // TODO: 초대자(코스 소유자) 이름은 코스 응답에 없음. (담당자)
   // 팀 합류/참여자 API에서 가져와야 함. 우선 기본값으로 표시.
   const inviterName = "친구";
+  const placeTypes = Array.from(
+    new Set(
+      course.places
+        .map((place) => place.travelMbtiType)
+        .filter((type): type is TravelMbtiType => type !== undefined),
+    ),
+  );
 
   return (
     <main className="bg-neutral-01 mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
@@ -197,6 +210,25 @@ const ExplorePage = ({ params }: ExplorePageProps) => {
               {course.places.length}곳
               {/* TODO(담당자): 팀원 수는 코스 응답에 없음. 참여자 API 연결 후 표시 */}
             </p>
+            {placeTypes.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5" aria-label="코스 유형">
+                {placeTypes.map((type) => (
+                  <span
+                    key={type}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                      TRAVEL_TYPE_SURFACE_CLASS[type],
+                    )}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn("h-1.5 w-1.5 rounded-full", TRAVEL_TYPE_DOT_CLASS[type])}
+                    />
+                    {TRAVEL_TYPE_LABEL[type]}
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div className="border-neutral-02 -mx-7 mt-6 border-t" />
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import AppHeader from "@/components/layout/AppHeader";
 import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import { getTravelTypeDotClass } from "@/lib/travelTypeStyles";
 import useGetTeamVisitsQuery from "@/features/record/hooks/useGetTeamVisitsQuery";
 import useSaveVisitRecordMutation from "@/features/record/hooks/useSaveVisitRecordMutation";
 
@@ -98,7 +100,10 @@ const VisitRecordPage = ({ params }: VisitRecordPageProps) => {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <span
-              className="bg-neutral-07 h-3 w-3 shrink-0 rounded-full"
+              className={cn(
+                "h-3 w-3 shrink-0 rounded-full",
+                getTravelTypeDotClass(visit.place.travelMbtiType),
+              )}
               aria-hidden="true"
             />
             <h1 className="text-neutral-07 truncate text-[16px] font-bold">

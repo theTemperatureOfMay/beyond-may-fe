@@ -23,8 +23,4 @@ export const ENV = {
     "NEXT_PUBLIC_API_BASE_URL",
     process.env.NEXT_PUBLIC_API_BASE_URL,
   ),
-  TMAP_APP_KEY: required(
-    "NEXT_PUBLIC_TMAP_APP_KEY",
-    process.env.NEXT_PUBLIC_TMAP_APP_KEY,
-  ),
 };

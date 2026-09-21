@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 
 import { cn } from "@/lib/cn";
+import { TRAVEL_TYPE_RING_CLASS } from "@/lib/travelTypeStyles";
+import type { TravelMbtiType } from "@/types/course";
 
 /** 타임라인 항목 상태 — 재사용처(지도·순서편집·AI수정 등)에서 상황에 맞게 지정 */
 export type TimelineItemStatus = "default" | "active" | "added" | "visited";
@@ -12,6 +14,7 @@ interface CourseTimelineItemProps {
   name: string;
   summary?: string;
   status?: TimelineItemStatus;
+  travelMbtiType?: TravelMbtiType;
   onClick?: () => void;
 }
 
@@ -26,6 +29,7 @@ const CourseTimelineItem = ({
   name,
   summary,
   status = "default",
+  travelMbtiType,
   onClick,
 }: CourseTimelineItemProps) => {
   const isVisited = status === "visited";
@@ -54,6 +58,8 @@ const CourseTimelineItem = ({
         layout
         className={cn(
           "bg-neutral-07 text-neutral-01 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs transition-all",
+          "ring-1 ring-offset-1 ring-transparent",
+          travelMbtiType && TRAVEL_TYPE_RING_CLASS[travelMbtiType],
           isActive && "shadow-[0_0_0_2px_var(--color-neutral-05)]",
         )}
       >

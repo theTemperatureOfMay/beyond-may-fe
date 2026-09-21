@@ -63,6 +63,7 @@ const CourseTimeline = ({
             name={place.name}
             summary={place.summary}
             status={getStatus(place.placeId)}
+            travelMbtiType={place.travelMbtiType}
             onClick={() => onPlaceClick?.(place)}
           />
         ))}

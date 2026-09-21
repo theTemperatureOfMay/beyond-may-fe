@@ -9,7 +9,13 @@ import {
 } from "react";
 import KakaoMap from "@/components/map/Map";
 import type { CoursePlace } from "@/types/course";
-import type { MapMarker, LatLng } from "@/types/map";
+import type {
+  MapMarker,
+  LatLng,
+  MapRouteSegment,
+  PlaceCategory,
+  TransitRouteStop,
+} from "@/types/map";
 import type { LocationUpdatedData } from "@/types/socket";
 
 /** visitedPlaceIds 기본값. 렌더마다 새 배열이 만들어져 핀이 다시 계산되지 않게 상수로 둔다. */
@@ -32,6 +38,12 @@ interface VisitMapProps {
   /** 방금 방문된 placeId 집합 — glow 등장 애니메이션용 */
   justVisitedIds?: number[];
   route?: LatLng[];
+  routeCategory?: PlaceCategory;
+  routeSegments?: MapRouteSegment[];
+  transitStops?: TransitRouteStop[];
+  /** 코스에 포함되지 않은 주변 추천 장소의 길찾기 목적지 핀 */
+  destinationMarker?: MapMarker;
+  fitBoundsKey?: string;
   teammates?: LocationUpdatedData[];
   onMarkerClick?: (placeId: number) => void;
 }
@@ -52,6 +64,11 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       currentPlaceId,
       justVisitedIds = [],
       route,
+      routeCategory,
+      routeSegments,
+      transitStops,
+      destinationMarker,
+      fitBoundsKey,
       onMarkerClick,
       teammates,
     },
@@ -126,7 +143,15 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
           center={center}
           markers={allMarkers}
           myLocation={myLocation}
-          route={route}
+          route={routeCategory || routeSegments ? undefined : route}
+          routeSegments={
+            routeSegments ??
+            (route && routeCategory
+              ? [{ path: route, category: routeCategory }]
+              : undefined)
+          }
+          transitStops={transitStops}
+          fitBoundsKey={fitBoundsKey}
           panTo={panTo}
           panToNonce={panToNonce}
           glow
