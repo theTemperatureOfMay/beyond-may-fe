@@ -96,6 +96,13 @@ const BLOB_LAYOUT = [
 ];
 
 /**
+ * 앱의 다른 화면과 같은 모바일 칼럼(최대 430px, 가운데 정렬)에 맞춘 전체 화면 오버레이.
+ * `fixed inset-0`만 쓰면 넓은 화면(데스크톱·태블릿)에서 브라우저 전체 너비로 펼쳐진다.
+ */
+const APP_COLUMN_CLASS =
+  "fixed inset-y-0 left-1/2 w-full max-w-[430px] -translate-x-1/2";
+
+/**
  * 축하 화면 등장 타임라인(초). 드러남 → 도착 → 의미 순서로 이어진다.
  * 움직임의 문법(시차·오버슈트 정착·빠른 이징)은 yui540/reanimated-css-animations의
  * Curtain·Tsumiki·Frames를 참고해 웹용으로 새로 작성했다.
@@ -111,6 +118,13 @@ const DOT_DROP_DURATION = 1.1;
 /** 점이 바닥에 닿는 시각(낙하 시간의 60%) — 물결이 이때부터 퍼진다 */
 const DOT_LAND_TIME = DOT_DROP_DELAY + DOT_DROP_DURATION * 0.6;
 const TEXT_START_MS = 1700;
+/**
+ * 블롭에서 색이 진하게 유지되는 반지름 비율(%). 너무 작으면 블롭 사이로 바탕색(base)이
+ * 덩어리로 비쳐 가장자리가 잘려 보이고, 크면 경계가 딱딱해진다.
+ */
+const BLOB_SOLID_STOP = 52;
+/** 진한 구간 다음, 색이 절반(투명도 50%)으로 옅어지는 지점(%). 경계가 딱딱해 보이지 않게 두 단계로 내린다. */
+const BLOB_MID_STOP = 80;
 const RING_COUNT = 3;
 /** 손가락 물결의 최대 지름(px)과 시작 배율(시작 지름 40px) */
 const RIPPLE_SIZE = 450;
@@ -300,13 +314,15 @@ const MapCompletionCelebration = ({
     router.push("/");
   };
 
-  const handlePointerEvent = (e: React.PointerEvent) => {
+  const handlePointerEvent = (e: React.PointerEvent<HTMLElement>) => {
+    const overlayRect = e.currentTarget.getBoundingClientRect();
     const randomColor =
       palette.blobs[Math.floor(Math.random() * palette.blobs.length)];
     const newRipple = {
       id: Date.now() + Math.random(),
-      x: e.clientX,
-      y: e.clientY,
+      // 오버레이가 화면 가운데 칼럼이라 화면 좌표가 아니라 오버레이 기준 좌표로 바꾼다.
+      x: e.clientX - overlayRect.left,
+      y: e.clientY - overlayRect.top,
       color: randomColor,
     };
     setRipples((prev) => [...prev.slice(-3), newRipple]);
@@ -317,7 +333,7 @@ const MapCompletionCelebration = ({
       <AnimatePresence>
         {phase === "coloring" && (
           <motion.div
-            className="pointer-events-none fixed inset-0 z-[55] flex items-center justify-center"
+            className={`pointer-events-none ${APP_COLUMN_CLASS} z-[55] flex items-center justify-center`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -351,7 +367,7 @@ const MapCompletionCelebration = ({
       <AnimatePresence>
         {phase === "celebrate" && (
           <motion.div
-            className="fixed inset-0 z-[60] touch-none overflow-hidden"
+            className={`${APP_COLUMN_CLASS} z-[60] touch-none overflow-hidden`}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0.6, bottom: 0 }}
@@ -392,7 +408,7 @@ const MapCompletionCelebration = ({
                       height: BLOB_LAYOUT[i].size,
                       // blur 필터 대신 가장자리가 미리 번진 그라디언트를 쓴다(움직이는 큰 레이어의
                       // blur는 매 프레임 다시 그려져 모바일에서 끊긴다). 물감처럼 섞이는 느낌은 유지.
-                      background: `radial-gradient(closest-side, ${color} 0%, ${color} 45%, ${color}00 100%)`,
+                      background: `radial-gradient(closest-side, ${color} 0%, ${color} ${BLOB_SOLID_STOP}%, ${color}80 ${BLOB_MID_STOP}%, ${color}00 100%)`,
                       willChange: "transform",
                     }}
                     animate={
