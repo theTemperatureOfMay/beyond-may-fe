@@ -40,7 +40,7 @@ const AboutDiscover = () => (
         <article
           key={type}
           className={cn(
-            "sticky top-0 flex h-dvh flex-col overflow-hidden rounded-t-[32px] px-6 pt-14 pb-8 shadow-[0_-12px_32px_rgba(20,20,20,0.16)]",
+            "sticky top-0 flex h-dvh transform-gpu flex-col overflow-hidden rounded-t-[32px] px-6 pt-14 pb-8 shadow-[0_-8px_24px_rgba(20,20,20,0.14)] will-change-transform",
             story.panelClass,
           )}
         >
@@ -59,7 +59,7 @@ const AboutDiscover = () => (
 
           <div className="relative mt-6 min-h-0 flex-1">
             <motion.div
-              className="border-neutral-07 absolute right-0 bottom-0 h-full max-h-full w-[68%] overflow-hidden rounded-[28px] border-2 bg-white shadow-[0_18px_40px_rgba(20,20,20,0.28)]"
+              className="border-neutral-07 absolute right-0 bottom-0 h-full max-h-full w-[68%] transform-gpu overflow-hidden rounded-[28px] border-2 bg-white shadow-[0_12px_28px_rgba(20,20,20,0.24)]"
               initial={{ y: 80, rotate: 0, opacity: 0 }}
               whileInView={{
                 y: 0,

@@ -101,31 +101,28 @@ const AboutWalk = () => {
     .join("·");
 
   return (
-    <section ref={sectionRef} className="bg-neutral-01 relative h-[340dvh]">
-      <div className="sticky top-0 isolate flex h-dvh flex-col overflow-hidden px-6 pt-16 pb-6">
-        {/* 모든 장소를 밝히면 성향 색 빛이 화면 아래에서 위로 차오른다. 스크롤을 되돌리면 다시 내려간다. */}
+    <section ref={sectionRef} className="bg-neutral-01 relative h-[340svh]">
+      <div className="sticky top-0 isolate flex h-svh flex-col overflow-hidden px-6 pt-16 pb-6">
+        {/* 모든 장소를 밝히면 성향 색 빛이 화면 아래에서 위로 차오른다. 스크롤을 되돌리면 다시 내려간다.
+            clip-path·bottom 애니메이션은 매 프레임 다시 그려 모바일에서 버벅이므로,
+            그라디언트 레이어 전체를 transform(GPU)으로 올려 보낸다.
+            그라디언트 윗부분이 투명해서 올라오는 앞쪽 경계가 부드럽게 번진다. */}
         <motion.div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10"
+          className="pointer-events-none absolute inset-0 -z-10 transform-gpu will-change-transform"
           style={{ background: buildFillGradient(selectedTypes) }}
           initial={false}
-          animate={{
-            clipPath: isComplete
-              ? "inset(0% 0% 0% 0%)"
-              : "inset(100% 0% 0% 0%)",
-          }}
+          animate={{ y: isComplete ? "0%" : "100%" }}
           transition={fillTransition}
-        />
-        <motion.div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 -z-10 h-28 translate-y-1/2 bg-linear-to-t from-white/0 via-white/80 to-white/0"
-          initial={false}
-          animate={{
-            bottom: isComplete ? "100%" : "0%",
-            opacity: isComplete ? [0, 1, 0] : 0,
-          }}
-          transition={fillTransition}
-        />
+        >
+          {/* 올라오는 경계를 따라가는 빛줄기 */}
+          <motion.div
+            className="absolute inset-x-0 top-0 h-28 -translate-y-1/2 bg-linear-to-t from-white/0 via-white/80 to-white/0"
+            initial={false}
+            animate={{ opacity: isComplete ? [0, 1, 0] : 0 }}
+            transition={fillTransition}
+          />
+        </motion.div>
 
         <AboutEyebrow index="07" label="WALK" className="text-primary-08" />
         <h2 className="text-neutral-07 mt-3 text-[32px] leading-[1.2] font-bold tracking-[-0.04em] break-keep">
