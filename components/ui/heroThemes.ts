@@ -50,8 +50,10 @@ const createFinish = (accent: string): HeroTheme["finish"] => [
 ];
 
 /**
- * 성향 유형별 배경 팔레트. 값은 Figma 시안(메인/미식러/기억러/사색러)의 색을 그대로 옮겼다.
- * 모든 테마가 동심원을 가지며, 시안에 색이 비어 있던 기억러·사색러·예술러의 동심원 끝색(glow)은
+ * 성향 유형별 배경 팔레트. 값은 Figma 시안의 색을 그대로 옮겼다.
+ * 유형 ↔ 색은 앱 전체 규칙(globals.css)과 같다: 사색러=보라 / 미식러=주황 / 예술러=초록 / 기억러=파랑.
+ * (시안의 "기억러"·"사색러" 라벨과 색이 반대로 붙어 있어, 라벨이 아니라 이 색 규칙을 따른다.)
+ * 모든 테마가 동심원을 가지며, 시안에 색이 비어 있던 동심원 끝색(glow)은
  * 각 시안의 블롭 색에서 골랐다.
  * - default(메인): 주황 배경 + 연보라 동심원 (블롭·하단 페이드 없음)
  * - 예술러: 아직 시안이 없어 다른 유형과 같은 구조로 임시 파생한 값
@@ -88,26 +90,6 @@ const HERO_THEMES: Record<HeroThemeKey, HeroTheme> = {
     finish: createFinish("#FFBF8B"),
   },
   REMEMBERER: {
-    base: "#98FFC4",
-    blobs: [
-      "#B773FF",
-      "#969DFF",
-      "#FFAAFB",
-      "#FFC1C1",
-      "#A8CEFF",
-      "#FD76FF",
-      "#F2D1FF",
-      "#E1C3FF",
-      "#C642FF",
-    ],
-    strong: "#7C25FF",
-    fade: true,
-    horizon: createHorizon("#D7A8FF"),
-    glow: "#D7A8FF",
-    sun: "#A07EEA",
-    finish: createFinish("#D7A8FF"),
-  },
-  THINKER: {
     base: "#98E3FF",
     blobs: [
       "#7392FF",
@@ -126,6 +108,26 @@ const HERO_THEMES: Record<HeroThemeKey, HeroTheme> = {
     glow: "#8DBBFF",
     sun: "#4D7AE4",
     finish: createFinish("#8DBBFF"),
+  },
+  THINKER: {
+    base: "#98FFC4",
+    blobs: [
+      "#B773FF",
+      "#969DFF",
+      "#FFAAFB",
+      "#FFC1C1",
+      "#A8CEFF",
+      "#FD76FF",
+      "#F2D1FF",
+      "#E1C3FF",
+      "#C642FF",
+    ],
+    strong: "#7C25FF",
+    fade: true,
+    horizon: createHorizon("#D7A8FF"),
+    glow: "#D7A8FF",
+    sun: "#A07EEA",
+    finish: createFinish("#D7A8FF"),
   },
   ARTIST: {
     base: "#D4FF98",
