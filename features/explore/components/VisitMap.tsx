@@ -18,8 +18,12 @@ import type {
 } from "@/types/map";
 import type { LocationUpdatedData } from "@/types/socket";
 
-/** visitedPlaceIds 기본값. 렌더마다 새 배열이 만들어져 핀이 다시 계산되지 않게 상수로 둔다. */
+/**
+ * visitedPlaceIds·justVisitedIds 기본값. 기본값을 `= []`로 쓰면 렌더마다 새 배열이 만들어져
+ * 핀 배열 메모이제이션이 깨지므로 상수로 둔다.
+ */
 const EMPTY_VISITED_IDS: number[] = [];
+const EMPTY_JUST_VISITED_IDS: number[] = [];
 
 export interface VisitMapHandle {
   /** 지도 중심을 내 위치로 이동 (하단 시트의 내 위치 버튼에서 호출) */
@@ -51,8 +55,8 @@ interface VisitMapProps {
 /**
  * 탐험 지도 (KakaoMap 래퍼).
  * 내 위치로 이동은 ref(panToMyLocation)로 노출 — 버튼은 하단 시트가 갖는다.
- * 핀 번호는 "남은 순서"(방문 완료 제외, 다음 목적지=1)로 재매김 —
- * 코스 타임라인의 취소선·재번호 규칙과 동일하게 맞춘다.
+ * 핀 번호는 방문 여부와 상관없이 코스 전체 기준 고정 순번(1, 2, 3…)이다 —
+ * 코스 타임라인의 번호 규칙과 동일하다.
  */
 const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
   (
@@ -62,7 +66,7 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       myLocation,
       visitedPlaceIds = EMPTY_VISITED_IDS,
       currentPlaceId,
-      justVisitedIds = [],
+      justVisitedIds = EMPTY_JUST_VISITED_IDS,
       route,
       routeCategory,
       routeSegments,

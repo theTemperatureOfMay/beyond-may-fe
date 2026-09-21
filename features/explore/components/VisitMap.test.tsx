@@ -94,8 +94,8 @@ it("방문 완료·다음 목적지가 바뀌면 핀을 다시 만든다", () =>
   expect(after).not.toBe(before);
   expect(after.find((marker) => marker.id === "2")?.visited).toBe(true);
   expect(after.find((marker) => marker.id === "3")?.isCurrent).toBe(true);
-  // 남은 순서 번호는 미방문 장소 기준으로 다시 매겨진다
-  expect(after.find((marker) => marker.id === "3")?.order).toBe(1);
+  // 핀 번호는 방문 여부와 상관없이 코스 전체 기준 고정 순번이다(타임라인과 같은 규칙)
+  expect(after.map((marker) => marker.order)).toEqual([1, 2, 3]);
 });
 
 it("panToPosition을 부르면 지도가 해당 좌표로 이동하도록 요청한다", () => {

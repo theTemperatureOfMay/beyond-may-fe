@@ -8,24 +8,28 @@ import useGetMyPreferenceQuery from "@/features/onboarding/hooks/useGetMyPrefere
 
 type PreferenceType = "THINKER" | "FOODIE" | "ARTIST" | "REMEMBERER";
 
+/**
+ * 유형별 축하 화면 팔레트. 유형 ↔ 색은 앱 전체 규칙과 같다:
+ * 사색러=보라 / 미식러=주황 / 예술러=초록 / 기억러=파랑 (components/ui/heroThemes.ts와 동일).
+ */
 const PALETTES: {
   [key in PreferenceType]: { base: string; blobs: string[]; dot: string };
 } = {
   THINKER: {
-    base: "#98E3FF",
+    base: "#98FFC4",
     blobs: [
-      "#7392FF",
-      "#96CAFF",
-      "#AAFEFF",
-      "#C1FCFF",
-      "#A8C8FF",
-      "#769FFF",
-      "#D1E3FF",
-      "#C3E4FF",
-      "#4281FF",
-      "#2550FF",
+      "#B773FF",
+      "#969DFF",
+      "#FFAAFB",
+      "#FFC1C1",
+      "#A8CEFF",
+      "#FD76FF",
+      "#F2D1FF",
+      "#E1C3FF",
+      "#C642FF",
+      "#7C25FF",
     ],
-    dot: "#4D7AE4",
+    dot: "#7C25FF",
   },
   FOODIE: {
     base: "#FFE798",
@@ -60,20 +64,20 @@ const PALETTES: {
     dot: "#A4DD62",
   },
   REMEMBERER: {
-    base: "#98FFC4",
+    base: "#98E3FF",
     blobs: [
-      "#B773FF",
-      "#969DFF",
-      "#FFAAFB",
-      "#FFC1C1",
-      "#A8CEFF",
-      "#FD76FF",
-      "#F2D1FF",
-      "#E1C3FF",
-      "#C642FF",
-      "#7C25FF",
+      "#7392FF",
+      "#96CAFF",
+      "#AAFEFF",
+      "#C1FCFF",
+      "#A8C8FF",
+      "#769FFF",
+      "#D1E3FF",
+      "#C3E4FF",
+      "#4281FF",
+      "#2550FF",
     ],
-    dot: "#7C25FF",
+    dot: "#4D7AE4",
   },
 };
 
