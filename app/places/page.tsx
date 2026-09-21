@@ -252,13 +252,19 @@ export default function PlacesPage() {
     setLoadingMessageIndex(0);
     setStep("recommendations");
 
-    const matchesExisting =
+        const matchesExisting =
       existingRecommendation &&
       existingRecommendation.travelSchedule === travelSchedule &&
       existingRecommendation.startDate === startDate &&
       existingRecommendation.endDate === endDate;
 
-    if (matchesExisting) {
+    // 미완료 배치가 남은 "진행 중" 세트만 이어하기.
+    // 완료된 세트는 재생성해서 새 추천을 받는다(같은 날짜 재시도·성향 변경 반영).
+    const canResume =
+      matchesExisting &&
+      existingRecommendation.batches.some((batch) => !batch.completed);
+
+    if (canResume) {
       resumeFromRecommendation(existingRecommendation);
       return;
     }
