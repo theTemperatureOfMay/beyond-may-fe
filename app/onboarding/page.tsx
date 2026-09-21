@@ -7,6 +7,7 @@ import type { PreferenceQuestion } from "@/types/preference";
 import { useGetPreferenceQuestionsQuery } from "@/features/onboarding/hooks/useGetPreferenceQuestionsQuery";
 import { useQuiz } from "@/features/onboarding/hooks/useQuiz";
 import { computePreference } from "@/features/onboarding/utils/computePreference";
+import { smoothScrollTo } from "@/features/onboarding/utils/smoothScrollTo";
 import useSessionStore from "@/stores/sessionStore";
 import AppHeader from "@/components/layout/AppHeader";
 import QuizIntro from "@/features/onboarding/components/QuizIntro";
@@ -71,6 +72,11 @@ const OnboardingPage = () => {
 
   /** 각 문항 섹션 DOM 참조 → 답변 후 다음 섹션으로 스크롤 */
   const sectionRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const scrollContainerRef = useRef<HTMLElement>(null);
+  /** 진행 중인 자동 스크롤을 취소하는 함수 (연속 답변·언마운트 시 정리) */
+  const cancelScrollRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => cancelScrollRef.current?.(), []);
 
   const handleSelect = (questionId: number, optionId: number): void => {
     const isNewAnswer = getSelectedOption(questionId) === null;
@@ -85,10 +91,19 @@ const OnboardingPage = () => {
     const nextQuestion = questions[currentIndex + 1];
     if (!nextQuestion) return;
 
+    // scrollIntoView(smooth)는 scroll-snap과 겹쳐 두세 번 흔들리고 모바일에서 너무 빠르다.
+    // 스냅을 잠시 끄고 정해진 시간 동안 직접 넘긴다.
     requestAnimationFrame(() => {
-      sectionRefs.current
-        .get(nextQuestion.questionId)
-        ?.scrollIntoView({ behavior: "smooth" });
+      const container = scrollContainerRef.current;
+      const section = sectionRefs.current.get(nextQuestion.questionId);
+      if (!container || !section) return;
+
+      const targetTop =
+        container.scrollTop +
+        section.getBoundingClientRect().top -
+        container.getBoundingClientRect().top;
+      cancelScrollRef.current?.();
+      cancelScrollRef.current = smoothScrollTo(container, targetTop);
     });
   };
 
@@ -167,7 +182,10 @@ const OnboardingPage = () => {
 
   // 질문 준비 완료: 질문 스크롤 컨테이너로 전환 (로딩 화면 없음)
   return (
-    <main className="scrollbar-hide bg-screen-gradient mx-auto h-[100dvh] w-full max-w-[430px] snap-y snap-mandatory overflow-y-scroll">
+    <main
+      ref={scrollContainerRef}
+      className="scrollbar-hide bg-screen-gradient mx-auto h-[100dvh] w-full max-w-[430px] snap-y snap-mandatory overflow-y-scroll overscroll-y-contain"
+    >
       {/* 진행률 바: 질문 화면 상단 고정 */}
       <div className="sticky top-0 z-10 px-6 pt-6 pb-10 backdrop-blur">
         <QuizProgressBar progress={progress} />
