@@ -47,6 +47,7 @@ import useLocationSimulationStore from "@/stores/locationSimulationStore";
 import useSimulatedLocation from "@/features/explore/hooks/useSimulatedLocation";
 import useCreateVisitMutation from "@/features/explore/hooks/useCreateVisitMutation";
 import type { LatLng } from "@/types/map";
+import { QUERY_KEYS } from "@/services/constant/queryKey";
 
 interface ExploreMapPageProps {
   params: Promise<{ courseId: string }>;
