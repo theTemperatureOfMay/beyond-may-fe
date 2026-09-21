@@ -132,5 +132,6 @@ export interface ChatCourseResponse {
 }
 
 export interface UpdateCourseRequest {
+  title?: string;
   places: Array<{ placeId: number; dayNumber: number; visitOrder: number }>;
 }
