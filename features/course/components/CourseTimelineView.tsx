@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import AppHeader from "@/components/layout/AppHeader";
+import Button from "@/components/ui/Button";
 import CourseTimeline from "@/features/course/components/CourseTimeline";
 import Sparkle from "@/components/ui/icons/Sparkle";
 import type {
@@ -57,7 +58,7 @@ const CourseTimelineView = ({
   };
 
   return (
-    <main className="relative mx-auto flex h-dvh w-full max-w-[430px] flex-col bg-[#FDFFFA]">
+    <main className="bg-neutral-01 relative mx-auto flex h-dvh w-full max-w-[430px] flex-col">
       <AppHeader
         onBack={onBack}
         showMenu={true}
@@ -65,7 +66,7 @@ const CourseTimelineView = ({
         centerLabel={title}
       />
 
-      <div className="flex-1 overflow-y-auto pt-[18px]">
+      <div className="flex-1 overflow-y-auto pt-4">
         <CourseTimeline
           places={places}
           activePlaceId={activePlaceId}
@@ -75,26 +76,27 @@ const CourseTimelineView = ({
       </div>
 
       {/* 3.1.2 하단 패널: 단일 메인 버튼 + 하단 텍스트 버튼 2개 */}
-      <div className="border-t border-[#DEDEDE] bg-[#FDFFFA] px-[25px] pt-[26px] pb-[max(20px,env(safe-area-inset-bottom))]">
-        <p className="font-['JetBrains_Mono'] text-[10px] font-normal tracking-[1px] text-[#77797F] uppercase">
+      <div className="border-neutral-03 bg-neutral-01 border-t px-6 pt-6 pb-[max(24px,env(safe-area-inset-bottom))]">
+        <p className="text-primary-08 text-xs font-semibold tracking-[0.12em]">
           추천 코스
         </p>
-        <h1 className="mt-[7px] text-[19.2px] leading-[24px] font-semibold text-[#141414]">
+        <h1 className="text-neutral-07 mt-2 text-lg leading-6 font-semibold">
           {title}
         </h1>
-        <p className="mt-[5px] text-[11.6px] leading-[14px] text-[#BFC3C1]">
+        <p className="text-neutral-04 mt-1 text-sm">
           {meta}
         </p>
 
         {onUseCourse && (
-          <button
-            type="button"
+          <Button
+            variant="solid"
+            size="lg"
             onClick={onUseCourse}
             disabled={isUsingCourse}
-            className="mt-[29px] flex h-[50px] w-full items-center justify-center rounded-[29px] bg-[#141414] font-['Gothic_A1'] text-[14px] font-[800] tracking-[1px] text-[#FDFFFA] shadow-[0px_4px_4px_rgba(0,0,0,0.25)]"
+            className="mt-6 w-full"
           >
             {isUsingCourse ? "코스 확정 중" : "이 코스 사용"}
-          </button>
+          </Button>
         )}
 
         {hasUseCourseError && (
@@ -107,14 +109,14 @@ const CourseTimelineView = ({
         )}
 
         {(onEditWithAi || onEditManually) && (
-          <div className="mt-[15px] flex items-center justify-center gap-[22px]">
+          <div className="mt-3 flex items-center justify-center gap-5">
             {onEditWithAi && (
               <button
                 type="button"
                 onClick={onEditWithAi}
-                className="focus-visible:outline-primary-03 flex items-center gap-[4px] rounded-full font-['Manrope'] text-[13.4px] font-semibold text-[#141414]"
+                className="focus-visible:outline-primary-03 text-neutral-07 flex items-center gap-1 rounded-full text-sm font-semibold"
               >
-                <Sparkle className="h-[13px] w-[13px] text-[#141414]" />
+                <Sparkle className="text-neutral-07 h-3.5 w-3.5" />
                 AI로 다듬기
               </button>
             )}
@@ -122,7 +124,7 @@ const CourseTimelineView = ({
               <button
                 type="button"
                 onClick={onEditManually}
-                className="focus-visible:outline-primary-03 rounded-full font-['Manrope'] text-[13.4px] font-semibold text-[#77797F]"
+                className="focus-visible:outline-primary-03 text-neutral-04 rounded-full text-sm font-semibold"
               >
                 직접 수정
               </button>

@@ -19,6 +19,8 @@ interface PlaceDetailSheetProps {
   onClose?: () => void;
   /** 사진 영역 비율(Tailwind aspect-* 클래스). 화면마다 사진 높이가 달라 조절 가능하게 둠. 기본 aspect-video */
   imageAspectRatio?: string;
+  /** 하단 footer 위 구분선 표시 여부 */
+  showFooterDivider?: boolean;
   className?: string;
 }
 
@@ -33,6 +35,7 @@ const PlaceDetailSheet = ({
   footer,
   onClose,
   imageAspectRatio = "aspect-video",
+  showFooterDivider = true,
   className,
 }: PlaceDetailSheetProps) => {
   const dialogRef = useDialogFocus<HTMLDivElement>(true, onClose);
@@ -160,7 +163,12 @@ const PlaceDetailSheet = ({
       </div>
 
       {footer && (
-        <div className="border-neutral-03 border-t px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+        <div
+          className={cn(
+            "px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]",
+            showFooterDivider && "border-neutral-03 border-t",
+          )}
+        >
           {footer}
         </div>
       )}

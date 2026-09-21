@@ -35,6 +35,8 @@ import AlertCircle from "@/components/ui/icons/AlertCircle";
 import ArrowRight from "@/components/ui/icons/ArrowRight";
 import KakaoMap from "@/components/map/Map";
 import { getCourseMapData } from "@/features/course/utils/courseMapAdapter";
+import { cn } from "@/lib/cn";
+import { TRAVEL_TYPE_RING_CLASS } from "@/lib/travelTypeStyles";
 
 // 사이드바 연동을 위한 Import
 import Sidebar from "@/components/layout/sidebar/Sidebar";
@@ -374,7 +376,14 @@ const CourseEditor = ({
                 onDrop={() => handleDrop(index)}
                 className="border-neutral-03 flex min-h-16 items-center gap-3 rounded-[18px] border bg-white px-3 py-2"
               >
-                <span className="bg-neutral-07 text-neutral-01 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px]">
+                <span
+                  className={cn(
+                    "bg-neutral-07 text-neutral-01 ring-offset-neutral-01 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] ring-1 ring-offset-2",
+                    place.travelMbtiType
+                      ? TRAVEL_TYPE_RING_CLASS[place.travelMbtiType]
+                      : "ring-transparent",
+                  )}
+                >
                   {index + 1}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -441,19 +450,21 @@ const CourseEditor = ({
           </div>
         )}
 
-        <div className="border-neutral-03 border-t bg-white px-6 pt-4 pb-[max(20px,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
+        <div className="border-neutral-03 border-t bg-white px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+          <Button
+            variant="solid"
+            size="lg"
             disabled={
               !title.trim() ||
               places.length < minimumPlaceCount ||
               saveMutation.isPending
             }
             onClick={() => saveMutation.mutate()}
-            className="flex h-[50px] w-full items-center justify-center rounded-[29px] bg-[#141414] font-['Gothic_A1'] text-[14px] font-[800] tracking-[1px] text-[#FDFFFA] shadow-[0px_4px_4px_rgba(0,0,0,0.25)] disabled:opacity-50"
+            isLoading={saveMutation.isPending}
+            className="w-full"
           >
-            {saveMutation.isPending ? "저장 중" : "수정 완료"}
-          </button>
+            수정 완료
+          </Button>
           {saveMutation.isError && (
             <p
               className="text-caution-02 mt-2 text-center text-[12px]"
@@ -670,41 +681,43 @@ const CourseEditor = ({
 
       {/* 결과 하단 패널 (제안 있을 때만) — 지도 뷰에서도 위에 뜨게 z-20 */}
       {hasProposal && (
-        <div className="border-t border-[#DEDEDE] bg-[#FDFFFA] px-[25px] pt-[26px] pb-[max(20px,env(safe-area-inset-bottom))]">
-          <p className="text-[10px] font-normal tracking-[1px] text-[#77797F] uppercase">
+        <div className="border-neutral-03 bg-neutral-01 border-t px-6 pt-6 pb-[max(24px,env(safe-area-inset-bottom))]">
+          <p className="text-primary-08 text-xs font-semibold tracking-[0.12em]">
             수정된 코스
           </p>
-          <h1 className="mt-[7px] text-[19.2px] leading-[24px] font-semibold text-[#141414]">
+          <h1 className="text-neutral-07 mt-2 text-lg leading-6 font-semibold">
             {title}
           </h1>
-          <p className="mt-[5px] text-[11.6px] leading-[14px] text-[#BFC3C1]">
+          <p className="text-neutral-04 mt-1 text-sm">
             {previewPlaces.length}곳 ·{" "}
             {course.travelSchedule === "DAY_TRIP" ? "당일치기" : "1박 2일"} ·{" "}
             {previewPlaces[0]?.name ?? ""}부터
           </p>
 
           {/* 버튼 2개: 이 코스로 변경 / AI 수정 n/2 */}
-          <div className="mt-[29px] flex gap-[14px]">
-            <button
-              type="button"
+          <div className="mt-6 flex gap-3">
+            <Button
+              variant="solid"
+              size="lg"
               onClick={() => applyMutation.mutate()}
               disabled={applyMutation.isPending}
-              className="flex h-[50px] flex-1 items-center justify-center rounded-[29px] bg-[#141414] text-[13px] font-[800] tracking-[0.5px] text-[#FDFFFA] shadow-[0px_4px_4px_rgba(0,0,0,0.25)] disabled:opacity-50"
+              isLoading={applyMutation.isPending}
+              className="flex-1"
             >
-              {applyMutation.isPending ? "변경 중" : "이 코스로 변경"}
-            </button>
-            <button
-              type="button"
+              이 코스로 변경
+            </Button>
+            <Button
               onClick={() => {
                 if (proposedPlaces) setPlaces(proposedPlaces);
                 setProposedPlaces(null);
                 setInstruction("");
               }}
               disabled={remainingRevisions <= 0}
-              className="flex h-[50px] flex-1 items-center justify-center rounded-[29px] border border-[#141414] bg-[#FDFFFA] text-[13px] font-[800] tracking-[0.5px] text-[#141414] shadow-[0px_4px_4px_rgba(0,0,0,0.25)] disabled:opacity-40"
+              size="lg"
+              className="flex-1"
             >
               AI 수정 {2 - remainingRevisions}/2
-            </button>
+            </Button>
           </div>
 
           {/* 밑줄: 코스 상세 수정 (지도로 보기는 리스트 하단/지도 우상단으로 이동) */}

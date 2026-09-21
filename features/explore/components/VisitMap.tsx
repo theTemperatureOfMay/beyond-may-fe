@@ -9,7 +9,13 @@ import {
 } from "react";
 import KakaoMap from "@/components/map/Map";
 import type { CoursePlace } from "@/types/course";
-import type { MapMarker, LatLng } from "@/types/map";
+import type {
+  MapMarker,
+  LatLng,
+  MapRouteSegment,
+  PlaceCategory,
+  TransitRouteStop,
+} from "@/types/map";
 import type { LocationUpdatedData } from "@/types/socket";
 
 /** visitedPlaceIds 기본값. 렌더마다 새 배열이 만들어져 핀이 다시 계산되지 않게 상수로 둔다. */
@@ -30,6 +36,12 @@ interface VisitMapProps {
   /** 다음 목적지 placeId — 이 핀만 깃발(current)로 표시 */
   currentPlaceId?: number | null;
   route?: LatLng[];
+  routeCategory?: PlaceCategory;
+  routeSegments?: MapRouteSegment[];
+  transitStops?: TransitRouteStop[];
+  /** 코스에 포함되지 않은 주변 추천 장소의 길찾기 목적지 핀 */
+  destinationMarker?: MapMarker;
+  fitBoundsKey?: string;
   teammates?: LocationUpdatedData[];
   onMarkerClick?: (placeId: number) => void;
 }
@@ -49,6 +61,11 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       visitedPlaceIds = EMPTY_VISITED_IDS,
       currentPlaceId,
       route,
+      routeCategory,
+      routeSegments,
+      transitStops,
+      destinationMarker,
+      fitBoundsKey,
       onMarkerClick,
       teammates,
     },
@@ -94,8 +111,17 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
         label: t.displayName,
       }));
 
-      return [...placeMarkers, ...memberMarkers];
-    }, [places, visitedPlaceIds, currentPlaceId, teammates]);
+      const displayMarkers = destinationMarker
+        ? [
+            ...placeMarkers.filter(
+              (marker) => marker.id !== destinationMarker.id,
+            ),
+            destinationMarker,
+          ]
+        : placeMarkers;
+
+      return [...displayMarkers, ...memberMarkers];
+    }, [places, visitedPlaceIds, currentPlaceId, teammates, destinationMarker]);
 
     const handleMarkerClick = useCallback(
       (markerId: string): void => {
@@ -124,7 +150,15 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
           center={center}
           markers={allMarkers}
           myLocation={myLocation}
-          route={route}
+          route={routeCategory || routeSegments ? undefined : route}
+          routeSegments={
+            routeSegments ??
+            (route && routeCategory
+              ? [{ path: route, category: routeCategory }]
+              : undefined)
+          }
+          transitStops={transitStops}
+          fitBoundsKey={fitBoundsKey}
           panTo={panTo}
           panToNonce={panToNonce}
           glow

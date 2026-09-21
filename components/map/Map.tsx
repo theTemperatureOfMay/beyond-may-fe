@@ -7,19 +7,29 @@ import MapPin from "@/components/map/MapPin";
 import ClusterMarker from "@/components/map/ClusterMarker";
 import useMarkerCluster from "@/hooks/useMarkerCluster";
 import { cn } from "@/lib/cn";
-import type { LatLng, MapMarker, MapProps, PlaceCategory } from "@/types/map";
+import Bus from "@/components/ui/icons/Bus";
+import Subway from "@/components/ui/icons/Subway";
+import type {
+  LatLng,
+  MapMarker,
+  MapProps,
+  PlaceCategory,
+  TransitRouteStop,
+} from "@/types/map";
 
 // 경로선 색상 (--color-accent-route와 동일)
 // 카카오맵 Polyline strokeColor는 CSS 변수를 못 받아 hex 직접 지정
 const ROUTE_STROKE_COLOR = "#ffc9d7";
-const ROUTE_STROKE_WEIGHT = 3;
+const WALK_ROUTE_DOT_COLOR = "#4d7ae4";
+const ROUTE_STROKE_WEIGHT = 6;
+const WALK_ROUTE_DOT_SPACING_PIXELS = 14;
 
-// 유형 ↔ 핀·glow 색 (연한 세트, globals.css --color-pin-*-rgb)
+// 유형 ↔ 핀·glow·코스 경로 색 (globals.css --color-pin-*-rgb와 동일)
 const CATEGORY_COLORS: Record<PlaceCategory, string> = {
-  THINKER: "var(--color-pin-thinker-rgb)",
-  FOODIE: "var(--color-pin-foodie-rgb)",
-  ARTIST: "var(--color-pin-artist-rgb)",
-  REMEMBERER: "var(--color-pin-remember-rgb)",
+  THINKER: "160, 126, 234",
+  FOODIE: "255, 194, 141",
+  ARTIST: "236, 244, 162",
+  REMEMBERER: "183, 202, 255",
 };
 const DEFAULT_COLOR = CATEGORY_COLORS.THINKER;
 
@@ -32,6 +42,90 @@ const Z_INDEX_ROUTE = 3;
 const Z_INDEX_MY_LOCATION = 5;
 const Z_INDEX_PIN = 10;
 const Z_INDEX_PIN_CURRENT = 20;
+const Z_INDEX_TRANSIT_STOP = 4;
+
+const sampleRouteDots = (
+  path: LatLng[],
+  map: kakao.maps.Map | null,
+): LatLng[] => {
+  if (!map || path.length < 2) return path;
+
+  const projection = map.getProjection();
+  const toPoint = (position: LatLng) =>
+    projection.pointFromCoords(
+      new window.kakao.maps.LatLng(position.lat, position.lng),
+    );
+  const dots = [path[0]];
+  let pixelsSinceLastDot = 0;
+
+  for (let index = 1; index < path.length; index += 1) {
+    const start = path[index - 1];
+    const end = path[index];
+    const startPoint = toPoint(start);
+    const endPoint = toPoint(end);
+    const segmentPixels = Math.hypot(
+      endPoint.x - startPoint.x,
+      endPoint.y - startPoint.y,
+    );
+    if (segmentPixels === 0) continue;
+
+    let pixelsAlongSegment = 0;
+    while (
+      pixelsSinceLastDot + segmentPixels - pixelsAlongSegment >=
+      WALK_ROUTE_DOT_SPACING_PIXELS
+    ) {
+      const pixelsToDot = WALK_ROUTE_DOT_SPACING_PIXELS - pixelsSinceLastDot;
+      pixelsAlongSegment += pixelsToDot;
+      const ratio = pixelsAlongSegment / segmentPixels;
+      dots.push({
+        lat: start.lat + (end.lat - start.lat) * ratio,
+        lng: start.lng + (end.lng - start.lng) * ratio,
+      });
+      pixelsSinceLastDot = 0;
+    }
+
+    pixelsSinceLastDot += segmentPixels - pixelsAlongSegment;
+  }
+
+  const last = path[path.length - 1];
+  if (dots[dots.length - 1] !== last) dots.push(last);
+  return dots;
+};
+
+const TransitStopMarker = ({ stop }: { stop: TransitRouteStop }) => {
+  const Icon = stop.vehicleType === "SUBWAY" ? Subway : Bus;
+  const kindLabel = stop.kind === "boarding" ? "탑승" : "하차";
+
+  return (
+    <CustomOverlayMap
+      position={stop.position}
+      xAnchor={0.5}
+      yAnchor={0.5}
+      zIndex={Z_INDEX_TRANSIT_STOP}
+    >
+      <div className="pointer-events-none relative flex h-8 w-8 items-center justify-center">
+        <div className="border-neutral-03 text-neutral-07 absolute bottom-[calc(100%+8px)] left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-white px-2 py-1 text-[11px] font-semibold whitespace-nowrap shadow-[0_2px_8px_rgba(0,0,0,0.18)]">
+          <Icon className="h-3.5 w-3.5" />
+          <span>{stop.lineName}</span>
+          <span className="border-neutral-03 absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-r border-b bg-white" />
+        </div>
+        <span
+          className={cn(
+            "mt-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
+            stop.kind === "boarding"
+              ? "bg-neutral-07 text-white"
+              : "text-neutral-07 bg-white",
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-neutral-07 absolute top-[calc(100%+2px)] rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap shadow-sm">
+          {kindLabel}
+        </span>
+      </div>
+    </CustomOverlayMap>
+  );
+};
 
 /**
  * 카카오 지도 베이스 컴포넌트.
@@ -49,9 +143,12 @@ const KakaoMap = ({
   center,
   markers,
   route,
+  routeSegments,
+  transitStops,
   myLocation,
   level = 6,
   fitBounds = true,
+  fitBoundsKey,
   glow = false,
   onMarkerClick,
   onError,
@@ -61,27 +158,41 @@ const KakaoMap = ({
 }: MapProps) => {
   const [loading, error] = useKakaoLoader();
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
-  const hasFitted = useRef(false);
+  const fittedBoundsKey = useRef<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(level);
 
-  // 마커·경로가 모두 보이도록 지도 범위를 최초 1회 맞춘다.
-  // 이후에는 사용자의 확대·이동 조작을 덮어쓰지 않는다.
+  // 경로가 새로 표시될 때 현재 위치부터 목적지까지 다시 맞춘다.
   useEffect(() => {
-    if (!map || !fitBounds || hasFitted.current) return;
+    if (!map || !fitBounds) return;
 
-    const positions = [
-      ...markers.map((marker) => marker.position),
+    const routePositions = [
       ...(route ?? []),
+      ...(routeSegments?.flatMap((segment) => segment.path) ?? []),
     ];
+    const positions =
+      routePositions.length >= 2
+        ? routePositions
+        : markers.map((marker) => marker.position);
     if (positions.length < 2) return;
+
+    const boundsKey =
+      fitBoundsKey ??
+      positions.map(({ lat, lng }) => `${lat},${lng}`).join("|");
+    if (fittedBoundsKey.current === boundsKey) return;
 
     const bounds = new window.kakao.maps.LatLngBounds();
     positions.forEach(({ lat, lng }) => {
       bounds.extend(new window.kakao.maps.LatLng(lat, lng));
     });
-    map.setBounds(bounds);
-    hasFitted.current = true;
-  }, [map, fitBounds, markers, route]);
+    map.setBounds(
+      bounds,
+      24,
+      24,
+      routePositions.length >= 2 ? Math.round(window.innerHeight * 0.5) : 24,
+      24,
+    );
+    fittedBoundsKey.current = boundsKey;
+  }, [map, fitBounds, fitBoundsKey, markers, route, routeSegments]);
 
   // 지정 좌표로 지도 중심 이동 (타임라인 항목 선택 등 외부 트리거용).
   // fitBounds(최초 1회)와 별개로, panTo 값이 바뀔 때마다 부드럽게 이동한다.
@@ -95,6 +206,7 @@ const KakaoMap = ({
     if (!map) return;
     const handleZoom = () => setZoomLevel(map.getLevel());
     window.kakao.maps.event.addListener(map, "zoom_changed", handleZoom);
+    handleZoom();
     return () => {
       window.kakao.maps.event.removeListener(map, "zoom_changed", handleZoom);
     };
@@ -143,6 +255,15 @@ const KakaoMap = ({
   }
 
   const hasRoute = route !== undefined && route.length >= 2;
+  const walkingRouteDots =
+    routeSegments?.flatMap((segment, index) =>
+      segment.strokeStyle === "shortdash"
+        ? sampleRouteDots(segment.path, map).map((position, dotIndex) => ({
+            id: `${zoomLevel}-${index}-${dotIndex}`,
+            position,
+          }))
+        : [],
+    ) ?? [];
 
   // 확대할수록(레벨이 낮을수록) glow가 화면을 더 채우도록 크기를 키운다.
   const glowSize = Math.min(GLOW_SIZE * Math.pow(1.3, level - zoomLevel), 700);
@@ -276,10 +397,47 @@ const KakaoMap = ({
           strokeWeight={ROUTE_STROKE_WEIGHT}
           strokeColor={ROUTE_STROKE_COLOR}
           strokeOpacity={0.9}
-          strokeStyle="shortdash"
+          strokeStyle="solid"
           zIndex={Z_INDEX_ROUTE}
         />
       )}
+
+      {routeSegments?.map((segment, index) =>
+        segment.path.length >= 2 && segment.strokeStyle !== "shortdash" ? (
+          <Polyline
+            key={`${index}-${segment.category ?? "THINKER"}`}
+            path={segment.path}
+            strokeWeight={ROUTE_STROKE_WEIGHT}
+            strokeColor={
+              segment.category
+                ? `rgb(${CATEGORY_COLORS[segment.category]})`
+                : ROUTE_STROKE_COLOR
+            }
+            strokeOpacity={0.9}
+            strokeStyle={segment.strokeStyle ?? "solid"}
+            zIndex={Z_INDEX_ROUTE}
+          />
+        ) : null,
+      )}
+
+      {walkingRouteDots.map((dot) => (
+        <CustomOverlayMap
+          key={`walking-dot-${dot.id}`}
+          position={dot.position}
+          xAnchor={0.5}
+          yAnchor={0.5}
+          zIndex={Z_INDEX_ROUTE}
+        >
+          <span
+            className="block h-2 w-2 rounded-full border border-white shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+            style={{ backgroundColor: WALK_ROUTE_DOT_COLOR }}
+          />
+        </CustomOverlayMap>
+      ))}
+
+      {transitStops?.map((stop) => (
+        <TransitStopMarker key={stop.id} stop={stop} />
+      ))}
 
       {myLocation && (
         <CustomOverlayMap

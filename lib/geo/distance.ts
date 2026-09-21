@@ -66,7 +66,7 @@ export const formatRemainingDistance = (meters: number): string => {
 export const formatWalkingTime = (meters: number): string =>
   `도보 ${Math.max(1, Math.round(meters / 80))}분`;
 
-/** 도보 경로 요약: 실측 소요시간(초)+거리(m) → "도보 12분 · 850m" (Tmap 응답용) */
+/** 도보 경로 요약: 실측 소요시간(초)+거리(m) → "도보 12분 · 850m" */
 export const formatWalkRouteSummary = (
   totalTimeSeconds: number,
   totalDistanceMeters: number,
