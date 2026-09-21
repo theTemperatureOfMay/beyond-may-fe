@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import ScrollIndicator from "@/components/ui/ScrollIndicator";
 import useSessionStore from "@/stores/sessionStore";
 import useGetMyPreferenceQuery from "@/features/onboarding/hooks/useGetMyPreferenceQuery";
 
@@ -94,6 +95,157 @@ const BLOB_LAYOUT = [
   { top: "80%", left: "-25%", size: "75%" },
 ];
 
+/**
+ * 축하 화면 등장 타임라인(초). 드러남 → 도착 → 의미 순서로 이어진다.
+ * 움직임의 문법(시차·오버슈트 정착·빠른 이징)은 yui540/reanimated-css-animations의
+ * Curtain·Tsumiki·Frames를 참고해 웹용으로 새로 작성했다.
+ */
+const CURTAIN_COUNT = 3;
+const CURTAIN_STAGGER = 0.12;
+const CURTAIN_DURATION = 0.8;
+const CURTAIN_EASE = [0.85, 0, 0.15, 1] as const;
+/** 커튼이 다 열린 뒤 블롭 배경이 덮이는 시작 시각 */
+const CONTENT_FADE_DELAY = 0.6;
+const DOT_DROP_DELAY = 0.8;
+const DOT_DROP_DURATION = 1.1;
+/** 점이 바닥에 닿는 시각(낙하 시간의 60%) — 물결이 이때부터 퍼진다 */
+const DOT_LAND_TIME = DOT_DROP_DELAY + DOT_DROP_DURATION * 0.6;
+const TEXT_START_MS = 1700;
+const RING_COUNT = 3;
+/** 손가락 물결의 최대 지름(px)과 시작 배율(시작 지름 40px) */
+const RIPPLE_SIZE = 450;
+const RIPPLE_START_SCALE = 40 / RIPPLE_SIZE;
+const RING_STAGGER = 0.25;
+const RING_DURATION = 1.8;
+
+/** 화면을 세로 3등분한 띠가 아래에서 위로 시차를 두고 차오르며 색을 깐다(Curtain). */
+const CurtainPanels = ({ color }: { color: string }) => (
+  <>
+    {Array.from({ length: CURTAIN_COUNT }, (_, index) => (
+      <motion.div
+        key={index}
+        aria-hidden="true"
+        className="absolute inset-y-0 origin-bottom"
+        style={{
+          left: `${(100 / CURTAIN_COUNT) * index}%`,
+          width: `${100 / CURTAIN_COUNT + 0.2}%`,
+          backgroundColor: color,
+        }}
+        initial={{ scaleY: 0 }}
+        animate={{ scaleY: 1 }}
+        transition={{
+          duration: CURTAIN_DURATION,
+          delay: index * CURTAIN_STAGGER,
+          ease: CURTAIN_EASE,
+        }}
+      />
+    ))}
+  </>
+);
+
+/**
+ * 위에서 떨어져 두 번 튕기며 정착하는 점(Tsumiki) + 정착 뒤 바깥으로 퍼지는 물결.
+ * 닿는 순간 눌렸다 펴지는(squash & stretch) 모양을 함께 준다.
+ */
+const LandingDot = ({
+  color,
+  isReducedMotion,
+}: {
+  color: string;
+  isReducedMotion: boolean;
+}) => {
+  // 물결은 점이 바닥에 닿는 순간부터 퍼진다. 그 전에는 링 자체를 그리지 않는다.
+  const [hasLanded, setHasLanded] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setHasLanded(true), DOT_LAND_TIME * 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="pointer-events-none absolute top-[42%] left-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2">
+      {!isReducedMotion &&
+        hasLanded &&
+        Array.from({ length: RING_COUNT }, (_, index) => {
+          // 반복 애니메이션의 delay는 첫 순환에서 숨겨지지 않아 링이 착지 전부터 보인다.
+          // 시차를 delay가 아니라 타임라인 안의 "숨은 구간"으로 넣는다.
+          const hiddenSeconds = index * RING_STAGGER;
+          const totalSeconds = hiddenSeconds + RING_DURATION;
+          const revealAt = hiddenSeconds / totalSeconds;
+          return (
+            <motion.span
+              key={index}
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full border-2"
+              style={{ borderColor: color, opacity: 0 }}
+              animate={{
+                opacity: [0, 0, 0.55, 0],
+                scale: [1, 1, 1, 3.4],
+              }}
+              transition={{
+                duration: totalSeconds,
+                times: [0, revealAt, revealAt + 0.001, 1],
+                ease: "easeOut",
+                repeat: Infinity,
+                repeatDelay: 0.3,
+              }}
+            />
+          );
+        })}
+      <motion.div
+        className="h-full w-full rounded-full"
+        style={{ backgroundColor: color }}
+        initial={isReducedMotion ? false : { opacity: 0, y: "-260%" }}
+        animate={
+          isReducedMotion
+            ? { opacity: 1 }
+            : {
+                opacity: [0, 1, 1, 1, 1, 1],
+                y: ["-260%", "0%", "-12%", "0%", "-5%", "0%"],
+                scaleX: [0.92, 1.14, 0.97, 1.04, 0.99, 1],
+                scaleY: [1.12, 0.8, 1.05, 0.94, 1.02, 1],
+              }
+        }
+        transition={{
+          duration: DOT_DROP_DURATION,
+          delay: DOT_DROP_DELAY,
+          times: [0, 0.6, 0.68, 0.8, 0.9, 1],
+          ease: ["easeIn", "easeOut", "easeIn", "easeOut", "easeIn"],
+        }}
+      />
+    </div>
+  );
+};
+
+/** 줄마다 아래에서 시차를 두고 올라와 살짝 넘쳤다 자리를 잡는 문장 한 줄. */
+const RiseLine = ({
+  children,
+  isVisible,
+  delay,
+  isReducedMotion,
+  className,
+}: {
+  children: React.ReactNode;
+  isVisible: boolean;
+  delay: number;
+  isReducedMotion: boolean;
+  className?: string;
+}) => (
+  <div className="-my-[0.1em] overflow-hidden py-[0.1em]">
+    <motion.div
+      className={className}
+      initial={isReducedMotion ? false : { y: "115%" }}
+      animate={isVisible ? { y: "0%" } : { y: "115%" }}
+      transition={{
+        duration: 0.7,
+        delay,
+        ease: [0.34, 1.56, 0.64, 1],
+      }}
+    >
+      {children}
+    </motion.div>
+  </div>
+);
+
 interface MapCompletionCelebrationProps {
   onClose?: () => void;
 }
@@ -111,6 +263,8 @@ const MapCompletionCelebration = ({
   useEffect(() => {
     if (myPreference) setPreferenceType(myPreference.preferenceType);
   }, [myPreference, setPreferenceType]);
+
+  const isReducedMotion = useReducedMotion() ?? false;
 
   const type: PreferenceType = preferenceType ?? "THINKER";
   const palette = PALETTES[type];
@@ -133,9 +287,12 @@ const MapCompletionCelebration = ({
 
   useEffect(() => {
     if (phase !== "celebrate") return;
-    const t = setTimeout(() => setShowText(true), 1200);
+    const t = setTimeout(
+      () => setShowText(true),
+      isReducedMotion ? 0 : TEXT_START_MS,
+    );
     return () => clearTimeout(t);
-  }, [phase]);
+  }, [phase, isReducedMotion]);
 
   const goHome = () => {
     onClose?.();
@@ -203,13 +360,15 @@ const MapCompletionCelebration = ({
             }}
             onPointerDown={handlePointerEvent}
             onPointerUp={handlePointerEvent}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.4, ease: "easeInOut" }}
           >
-            <div
+            {/* ① 드러남: 세로 3띠가 시차로 차오르며 색을 깔고, 그 위로 블롭 배경이 덮인다 */}
+            {!isReducedMotion && <CurtainPanels color={palette.base} />}
+            <motion.div
               className="absolute inset-0"
               style={{ backgroundColor: palette.base }}
+              initial={isReducedMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: CONTENT_FADE_DELAY, duration: 0.9 }}
             >
               {palette.blobs.map((color, i) => {
                 // 짝수/홀수 인덱스에 따라 움직이는 방향을 다르게 주어 불규칙하고 유기적인 섞임 유도
@@ -231,14 +390,20 @@ const MapCompletionCelebration = ({
                       left: BLOB_LAYOUT[i].left,
                       width: BLOB_LAYOUT[i].size,
                       height: BLOB_LAYOUT[i].size,
-                      background: color,
-                      filter: "blur(75px)", // 57px -> 75px로 올려서 경계를 허물고 물감처럼 섞이게 함
+                      // blur 필터 대신 가장자리가 미리 번진 그라디언트를 쓴다(움직이는 큰 레이어의
+                      // blur는 매 프레임 다시 그려져 모바일에서 끊긴다). 물감처럼 섞이는 느낌은 유지.
+                      background: `radial-gradient(closest-side, ${color} 0%, ${color} 45%, ${color}00 100%)`,
+                      willChange: "transform",
                     }}
-                    animate={{
-                      x: moveX,
-                      y: moveY,
-                      scale: [1, 1.25, 0.85, 1], // 커졌다 작아지는 숨쉬는 모션 추가
-                    }}
+                    animate={
+                      isReducedMotion
+                        ? undefined
+                        : {
+                            x: moveX,
+                            y: moveY,
+                            scale: [1.15, 1.4, 0.98, 1.15], // 커졌다 작아지는 숨쉬는 모션 (번짐 보정 1.15배)
+                          }
+                    }
                     transition={{
                       duration: 15 + (i % 5) * 3, // 15~27초 주기로 아주 느리고 스스스하게 움직임
                       repeat: Infinity,
@@ -247,7 +412,7 @@ const MapCompletionCelebration = ({
                   />
                 );
               })}
-            </div>
+            </motion.div>
 
             {/* 빛이 섞이는(Color Mixing) 파동 연출 */}
             {ripples.map((ripple) => (
@@ -259,12 +424,14 @@ const MapCompletionCelebration = ({
                   top: ripple.y,
                   x: "-50%",
                   y: "-50%",
-                  backgroundColor: ripple.color,
+                  width: RIPPLE_SIZE,
+                  height: RIPPLE_SIZE,
+                  background: `radial-gradient(closest-side, ${ripple.color} 0%, ${ripple.color}00 100%)`,
                   mixBlendMode: "color-dodge",
-                  filter: "blur(40px)",
                 }}
-                initial={{ width: 40, height: 40, opacity: 0.8 }}
-                animate={{ width: 450, height: 450, opacity: 0 }}
+                // 크기(width/height)를 애니메이션하면 매 프레임 레이아웃을 다시 계산하므로 scale로 키운다.
+                initial={{ scale: RIPPLE_START_SCALE, opacity: 0.8 }}
+                animate={{ scale: 1, opacity: 0 }}
                 transition={{ duration: 1.5, ease: "easeOut" }}
                 onAnimationComplete={() =>
                   setRipples((prev) => prev.filter((r) => r.id !== ripple.id))
@@ -272,33 +439,36 @@ const MapCompletionCelebration = ({
               />
             ))}
 
-            <motion.div
-              className="pointer-events-none absolute top-[42%] left-1/2 -translate-x-1/2 -translate-y-1/2"
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }}
-            >
-              <div
-                className="h-20 w-20 rounded-full"
-                style={{ backgroundColor: palette.dot }}
-              />
-            </motion.div>
+            {/* ② 도착: 점이 떨어져 튕기며 정착하고, 지도의 glow-wave와 같은 물결이 퍼진다 */}
+            <LandingDot color={palette.dot} isReducedMotion={isReducedMotion} />
 
-            <motion.div
-              className="pointer-events-none absolute inset-x-0 bottom-[18%] px-8"
-              initial={{ opacity: 0, y: 16 }}
-              animate={showText ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.9, ease: "easeOut" }}
-            >
-              <p className="text-neutral-07 text-[15px] font-medium tracking-[0.1em]">
+            {/* ③ 의미: 문장이 줄마다 시차를 두고 올라와 자리를 잡는다 */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-[18%] px-8">
+              <RiseLine
+                isVisible={showText}
+                delay={0}
+                isReducedMotion={isReducedMotion}
+                className="text-neutral-07 text-[15px] font-medium tracking-[0.1em]"
+              >
                 함께 광주의 색채를 입혔습니다
-              </p>
+              </RiseLine>
               <h1 className="text-neutral-07 mt-3 text-[34px] leading-[1.3] font-bold">
-                다채로운 광주를
-                <br />
-                발견했습니다
+                <RiseLine
+                  isVisible={showText}
+                  delay={0.12}
+                  isReducedMotion={isReducedMotion}
+                >
+                  다채로운 광주를
+                </RiseLine>
+                <RiseLine
+                  isVisible={showText}
+                  delay={0.24}
+                  isReducedMotion={isReducedMotion}
+                >
+                  발견했습니다
+                </RiseLine>
               </h1>
-            </motion.div>
+            </div>
 
             <motion.div
               className="pointer-events-none absolute inset-x-0 bottom-[6%] flex flex-col items-center gap-1"
@@ -306,12 +476,7 @@ const MapCompletionCelebration = ({
               animate={showText ? { opacity: 1 } : {}}
               transition={{ delay: 0.4, duration: 0.8 }}
             >
-              <span className="animate-hint-bounce text-neutral-07 text-[18px]">
-                ↑
-              </span>
-              <span className="text-neutral-07 text-[13px] font-medium tracking-[0.1em]">
-                위로 올려 홈으로
-              </span>
+              <ScrollIndicator direction="up" label="위로 올려 홈으로" />
             </motion.div>
           </motion.div>
         )}
