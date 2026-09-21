@@ -53,10 +53,20 @@ const ResultTypeCard = ({ result }: ResultTypeCardProps) => {
           </div>
 
           <div className="pb-2 text-left">
-            <p className="text-neutral-04 text-[16px] font-medium">나는</p>
-            <h1 className="text-neutral-07 mt-1 text-[40px] leading-[1.2] font-bold tracking-[-0.02em]">
-              {mbtiName}
-            </h1>
+            {/* overflow-hidden 래퍼가 슬라이드인 시작 위치(왼쪽 바깥)의 글자를 가린다. */}
+            <div className="overflow-hidden">
+              <p className="animate-slide-in text-neutral-04 text-[16px] font-medium">
+                나는
+              </p>
+            </div>
+            <div className="mt-1 overflow-hidden">
+              <h1
+                className="animate-slide-in text-neutral-07 text-[40px] leading-[1.2] font-bold tracking-[-0.02em]"
+                style={{ animationDelay: "0.15s" }}
+              >
+                {mbtiName}
+              </h1>
+            </div>
           </div>
         </div>
 

@@ -13,6 +13,8 @@ import PlaceDetailContainer from "@/features/explore/components/PlaceDetailConta
 import useCompleteExplorationMutation from "@/features/explore/hooks/useCompleteExplorationMutation";
 import { QUERY_KEYS } from "@/services/constant/queryKey";
 import { getApiCode } from "@/services/lib/axios";
+import useRefreshVisitProgress from "@/features/explore/hooks/useRefreshVisitProgress";
+import { getCompletedPlaceCount } from "@/features/explore/utils/visitProgress";
 import useGetExplorationVisitedPlacesQuery from "@/features/explore/hooks/useGetExplorationVisitedPlacesQuery";
 import useGetExplorationStatusQuery from "@/features/explore/hooks/useGetExplorationStatusQuery";
 import useSessionStore from "@/stores/sessionStore";
@@ -24,7 +26,7 @@ interface CourseTimelinePageProps {
 /**
  * 탐험 내 코스 상세 타임라인 (4.3.4).
  * 방문 완료·진행 중·미방문을 구분해 코스 장소를 순서대로 보여줌.
- * "코스 완료하기"로 완료 확인 모달(5.1.2-B) 연결.
+ * "코스 완료하기"로 완료 확인 모달(5.1.2-B) 연결. 전부 방문했으면 일반 완료 확인, 아니면 조기 완료 경고.
  */
 const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   const { courseId } = use(params);
@@ -34,6 +36,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   const [isCompleteOpen, setIsCompleteOpen] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const refreshVisitProgress = useRefreshVisitProgress(explorationIdStr);
 
   const router = useRouter();
   const { mutate: completeExploration, isPending: isCompleting } =
@@ -76,16 +79,22 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
   );
   const activePlaceId = activePlace?.placeId;
 
-  const completedCount =
-    explorationStatus?.courseProgress.completedCoursePlaceCount ??
-    visitedPlaceIds.length;
+  // 체크 표시는 방문 목록, 진행률은 탐험 상태에서 오므로 한쪽이 옛 값이어도 어긋나지 않게 더 큰 값을 쓴다.
+  const completedCount = getCompletedPlaceCount(
+    explorationStatus?.courseProgress.completedCoursePlaceCount,
+    visitedPlaceIds.length,
+  );
   const totalCount =
     explorationStatus?.courseProgress.totalCoursePlaceCount ??
     course.places.length;
   const progressPercent =
     totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  // 모든 장소를 방문했으면 조기 완료 경고 대신 일반 완료 확인을 보여준다.
+  const isAllVisited = totalCount > 0 && completedCount >= totalCount;
 
   const isExplorationCompleted = explorationStatus?.status === "COMPLETED";
+  const canCompleteEarly =
+    explorationStatus?.permissions.canCompleteEarly ?? false;
 
   const handleComplete = () => {
     if (!explorationIdStr) return;
@@ -142,7 +151,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
       </div>
 
       {/* 코스 완료하기 */}
-      {!isExplorationCompleted && (
+      {!isExplorationCompleted && canCompleteEarly && (
         <div className="px-6 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
           <button
             type="button"
@@ -157,10 +166,14 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
       {/* 완료 확인 모달 (5.1.2-B) — Modal 재사용 */}
       <Modal open={isCompleteOpen} onClose={() => setIsCompleteOpen(false)}>
         <h2 className="text-neutral-07 text-[18px] font-semibold">
-          아직 방문하지 않은 곳이 있어요
+          {isAllVisited
+            ? "코스를 완료할까요?"
+            : "아직 방문하지 않은 곳이 있어요"}
         </h2>
         <p className="text-neutral-04 mt-2 text-[13px] leading-[1.55]">
-          지금 완료하면 코스는 완료 처리되고 되돌릴 수 없어요.
+          {isAllVisited
+            ? "모든 장소를 방문했어요. 완료하면 여행 기록으로 이동하고 되돌릴 수 없어요."
+            : "지금 완료하면 코스는 완료 처리되고 되돌릴 수 없어요."}
         </p>
         <div className="mt-5 flex gap-2">
           <Button
@@ -193,9 +206,7 @@ const CourseTimelinePage = ({ params }: CourseTimelinePageProps) => {
           }
           onClose={() => setSelectedPlaceId(null)}
           onVisitSuccess={() => {
-            queryClient.invalidateQueries({
-              queryKey: QUERY_KEYS.EXPLORATION.VISITED_PLACES(explorationIdStr),
-            });
+            void refreshVisitProgress();
             setSelectedPlaceId(null);
           }}
         />

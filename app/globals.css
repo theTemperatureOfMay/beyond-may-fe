@@ -88,6 +88,7 @@
   --animate-card-sway: card-sway 1.4s ease-in-out infinite;
   --animate-card-pendulum: card-pendulum 2.6s ease-in-out infinite;
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-slide-in: slide-in 0.8s cubic-bezier(0.8, 0, 0.2, 1) both;
   --animate-glow-breath: glow-breath 4s ease-in-out infinite;
   --animate-glow-emerge: glow-emerge 1.6s ease-out;
   --animate-glow-wave: glow-wave 3.5s ease-out infinite;
@@ -186,6 +187,17 @@
   }
   100% {
     background-position: 150% 0;
+  }
+}
+
+/* 텍스트가 왼쪽 바깥에서 슉 하고 들어오는 효과. overflow-hidden 래퍼 안에서 써야
+   시작 위치(-101%)의 글자가 래퍼 밖으로 보이지 않는다. */
+@keyframes slide-in {
+  from {
+    transform: translateX(-101%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
 

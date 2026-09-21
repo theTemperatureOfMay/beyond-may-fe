@@ -25,6 +25,8 @@ import useSessionStore from "@/stores/sessionStore";
 
 /** 세 시안을 보여준 뒤 한 번 더 스크롤하면 기존 온보딩으로 이동한다. */
 const FRAME_COUNT = 4;
+/** 스크롤하면 글자가 연회색으로 바뀐다. 메인과 유형 테마 모두 같다. */
+const TEXT_COLORS = ["#141414", "#BEC2C0", "#BEC2C0"];
 const FINAL_DESIGN_FRAME_PROGRESS = 2 / 3;
 
 interface HomePageProps {
@@ -73,6 +75,7 @@ const HomePage = ({ searchParams }: HomePageProps) => {
     [0, 0.5, 1],
   );
 
+  const textColor = useTransform(visualProgress, [0, 0.5, 1], TEXT_COLORS);
   const subtitleTop = useTransform(
     visualProgress,
     [0, 0.5, 1],
@@ -127,6 +130,7 @@ const HomePage = ({ searchParams }: HomePageProps) => {
           <GradientBackground
             progress={visualProgress}
             theme={preferenceType ?? "default"}
+            horizon
           />
 
           <AppHeader
@@ -156,14 +160,14 @@ const HomePage = ({ searchParams }: HomePageProps) => {
           </motion.button>
 
           <motion.p
-            style={{ top: subtitleTop }}
+            style={{ top: subtitleTop, color: textColor }}
             className="text-neutral-07 absolute left-[7.7%] text-[20px] leading-none font-medium tracking-[0.12em]"
           >
             광주 동행 지도
           </motion.p>
 
           <motion.h1
-            style={{ top: titleTop }}
+            style={{ top: titleTop, color: textColor }}
             className="text-neutral-07 absolute left-[7.2%] text-[64px] leading-[1.18] font-bold tracking-[-0.035em]"
           >
             5월 너머의

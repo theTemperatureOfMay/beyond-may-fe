@@ -282,6 +282,7 @@ const CoursePage = ({ params, searchParams }: CoursePageProps) => {
         }
         isConfirming={isConfirming}
         hasConfirmError={hasConfirmError}
+        isConfirmed={isConfirmed}
       />
 
       <Modal open={isConfirmOpen} onClose={() => setIsConfirmOpen(false)}>
