@@ -252,7 +252,7 @@ export default function PlacesPage() {
     setLoadingMessageIndex(0);
     setStep("recommendations");
 
-        const matchesExisting =
+    const matchesExisting =
       existingRecommendation &&
       existingRecommendation.travelSchedule === travelSchedule &&
       existingRecommendation.startDate === startDate &&

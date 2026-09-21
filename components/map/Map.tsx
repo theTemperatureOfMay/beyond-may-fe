@@ -33,8 +33,8 @@ const CATEGORY_COLORS: Record<PlaceCategory, string> = {
 };
 const DEFAULT_COLOR = CATEGORY_COLORS.THINKER;
 
-const GLOW_SIZE = 250;
-const GLOW_OPACITY_INNER = 0.55;
+const GLOW_RADIUS_METERS = 2500;
+const GLOW_OPACITY_INNER = 0.4;
 const GLOW_OPACITY_MID = 0.2;
 
 // 레이어 순서: 경로선 < 내 위치 < 핀 < 다음 목적지(최상단)
@@ -201,14 +201,39 @@ const KakaoMap = ({
     map.panTo(new window.kakao.maps.LatLng(panTo.lat, panTo.lng));
   }, [map, panTo, panToNonce]);
 
-  // 줌 레벨 추적 — glow 크기를 확대 정도에 맞춰 키우기 위함
+  // glow 크기 — 지도상 GLOW_RADIUS_METERS 반경을 현재 줌의 px로 변환 (줌 무관 일관)
+  const [glowSize, setGlowSize] = useState(300);
   useEffect(() => {
     if (!map) return;
-    const handleZoom = () => setZoomLevel(map.getLevel());
-    window.kakao.maps.event.addListener(map, "zoom_changed", handleZoom);
-    handleZoom();
+    const updateGlowSize = () => {
+      setZoomLevel(map.getLevel());
+      const proj = map.getProjection();
+      const c = map.getCenter();
+      const p1 = proj.containerPointFromCoords(c);
+      const p2 = proj.containerPointFromCoords(
+        new window.kakao.maps.LatLng(c.getLat() + 0.001, c.getLng()),
+      );
+      const pxPerMeter = Math.abs(p1.y - p2.y) / 111;
+      const raw = GLOW_RADIUS_METERS * pxPerMeter * 2;
+      const mapHeight = map.getNode().clientHeight;
+      // raw를 그대로 쓰면 확대 시 급증 → sqrt로 완만한 곡선. 화면 크기와 섞어 스케일 맞춤
+      const eased = Math.sqrt(raw) * Math.sqrt(mapHeight) * 0.65;
+      setGlowSize(Math.max(eased, 300));
+    };
+    updateGlowSize();
+    window.kakao.maps.event.addListener(map, "zoom_changed", updateGlowSize);
+    window.kakao.maps.event.addListener(map, "center_changed", updateGlowSize);
     return () => {
-      window.kakao.maps.event.removeListener(map, "zoom_changed", handleZoom);
+      window.kakao.maps.event.removeListener(
+        map,
+        "zoom_changed",
+        updateGlowSize,
+      );
+      window.kakao.maps.event.removeListener(
+        map,
+        "center_changed",
+        updateGlowSize,
+      );
     };
   }, [map]);
 
@@ -264,9 +289,6 @@ const KakaoMap = ({
           }))
         : [],
     ) ?? [];
-
-  // 확대할수록(레벨이 낮을수록) glow가 화면을 더 채우도록 크기를 키운다.
-  const glowSize = Math.min(GLOW_SIZE * Math.pow(1.3, level - zoomLevel), 700);
 
   // 깃발·방문완료는 클러스터 대상이 아니라 항상 개별 렌더
   const fixedMarkers = markers.filter(
@@ -324,22 +346,58 @@ const KakaoMap = ({
       dx || dy ? { transform: `translate(${dx}px, ${dy}px)` } : undefined;
     const markerContent = (
       <>
-        {/* 방문 완료 glow — 핀과 같은 컨테이너에 두어 항상 정확히 붙는다 */}
+        {/* 방문 완료 glow — 베이스(항상 꽉 참, 흑백 덮개) + 파장 링(퍼지는 물결) 2층 */}
         {glow && marker.visited && (
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              width: glowSize,
-              height: glowSize,
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              background: `radial-gradient(circle, rgba(${color}, ${GLOW_OPACITY_INNER}) 0%, rgba(${color}, ${GLOW_OPACITY_MID}) 40%, rgba(${color}, 0) 70%)`,
-              pointerEvents: "none",
-              zIndex: -1,
-            }}
-          />
+          <>
+            {/* 베이스: 흑백 지도를 항상 덮는 고정 glow (사라지지 않음) */}
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                width: glowSize,
+                height: glowSize,
+                borderRadius: "50%",
+                background: `radial-gradient(circle, rgba(${color}, ${GLOW_OPACITY_INNER}) 0%, rgba(${color}, ${GLOW_OPACITY_MID}) 45%, rgba(${color}, 0) 72%)`,
+                pointerEvents: "none",
+                zIndex: -1,
+                transform: "translate(-50%, -50%)",
+                animation: marker.justVisited
+                  ? "glow-emerge 1.6s ease-out"
+                  : undefined,
+              }}
+            />
+            {[
+              { delay: 0, duration: 3.5 },
+              { delay: 1.3, duration: 3.5 },
+              { delay: 2.6, duration: 3.5 },
+            ].map(({ delay, duration }) => (
+              <div
+                key={delay}
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  width: glowSize,
+                  height: glowSize,
+                  transform: "translate(-50%, -50%)",
+                  pointerEvents: "none",
+                  zIndex: -1,
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "50%",
+                    background: `radial-gradient(circle, rgba(${color}, 0) 38%, rgba(${color}, ${GLOW_OPACITY_MID}) 55%, rgba(${color}, 0) 72%)`,
+                    opacity: 0.3,
+                    animation: `glow-wave ${duration}s ease-out ${delay}s infinite`,
+                  }}
+                />
+              </div>
+            ))}
+          </>
         )}
         <MapPin order={marker.order} color={color} state={state} />
       </>

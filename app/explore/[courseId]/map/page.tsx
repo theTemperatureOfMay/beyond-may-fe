@@ -30,6 +30,7 @@ import TeamParticipantsSheet from "@/features/explore/components/TeamParticipant
 import NearbyPlacesSheet from "@/features/explore/components/NearbyPlacesSheet";
 import NearbyEmptyToast from "@/features/explore/components/NearbyEmptyToast";
 import LocationSharingModal from "@/features/explore/components/LocationSharingModal";
+import MapCompletionCelebration from "@/features/explore/components/MapCompletionCelebration";
 import PlaceDetailContainer from "@/features/explore/components/PlaceDetailContainer";
 import OutOfGwangjuBanner from "@/features/explore/components/OutOfGwangjuBanner";
 import Sidebar from "@/components/layout/sidebar/Sidebar";
@@ -79,6 +80,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   );
   const myParticipantIdRef = useRef<number | null>(null);
   const refreshVisitProgress = useRefreshVisitProgress(explorationIdStr);
+  const [justVisitedIds, setJustVisitedIds] = useState<number[]>([]);
 
   const visitMapRef = useRef<VisitMapHandle>(null);
   const routeRequestIdRef = useRef(0);
@@ -110,7 +112,6 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const { data: explorationStatus } =
     useGetExplorationStatusQuery(explorationIdStr);
 
-  // STOMP 연결 (구독: visits·locations·events) — 진행 중(ONGOING) 탐험일 때만 연결
   const { sendLocation } = useExplorationSocket({
     explorationId: explorationId ?? 0,
     token:
@@ -259,6 +260,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const activeRoute = directions?.[routeMode] ?? null;
 
   // 안내 중인 도보 경로만 걸어온 만큼 줄인다. 대중교통은 서버 선형을 유지한다.
+  // 전체 방문 완료 = 미방문 장소 없음(nextPlace null) + 장소가 하나라도 있음
+  const isAllVisited = course.places.length > 0 && nextPlace === null;
+
   const displayRoute =
     activeRoute && myLocation && isGuiding && routeMode === "walking"
       ? getRemainingRoute(activeRoute.path, myLocation)
@@ -396,6 +400,8 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
             });
             clearDirections();
             void refreshVisitProgress();
+            // 목적지 방문 인증 → glow 등장용 justVisited 기록
+            setJustVisitedIds((prev) => [...prev, place.placeId]);
             goNext();
           },
           onError: goNext,
@@ -429,7 +435,6 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
   const participantCount = participants?.participantCount ?? 0;
   const canUseNearby = coordinates != null && isInGwangju(coordinates);
   const isOutOfGwangju = coordinates != null && !isInGwangju(coordinates);
-  // 광주 밖이거나 위치 권한 거부 → 심사/데모용 위치 체험 진입 배너
   const showSimulationBanner =
     isOngoing &&
     !isSimulationEnabled &&
@@ -448,6 +453,7 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
         center={center}
         myLocation={myLocation}
         visitedPlaceIds={initialVisitedPlaceIds}
+        justVisitedIds={justVisitedIds}
         currentPlaceId={nextPlace?.placeId ?? null}
         route={displayRouteSegments ? undefined : displayRoute}
         routeSegments={displayRouteSegments}
@@ -562,6 +568,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
           });
           clearDirections();
           void refreshVisitProgress();
+          if (selectedPlaceId !== null) {
+            setJustVisitedIds((prev) => [...prev, selectedPlaceId]);
+          }
           setSelectedPlaceId(null);
         }}
       />
@@ -580,6 +589,9 @@ const ExploreMapPage = ({ params }: ExploreMapPageProps) => {
           onCollapse={setIsDirectionsCollapsed}
         />
       )}
+
+      {/* 전체 방문 완료 → 색채 축하 연출 (위로 스와이프하면 홈) */}
+      {isAllVisited && <MapCompletionCelebration />}
     </div>
   );
 };

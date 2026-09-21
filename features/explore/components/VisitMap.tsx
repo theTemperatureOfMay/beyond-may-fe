@@ -18,8 +18,12 @@ import type {
 } from "@/types/map";
 import type { LocationUpdatedData } from "@/types/socket";
 
-/** visitedPlaceIds 기본값. 렌더마다 새 배열이 만들어져 핀이 다시 계산되지 않게 상수로 둔다. */
+/**
+ * visitedPlaceIds·justVisitedIds 기본값. 기본값을 `= []`로 쓰면 렌더마다 새 배열이 만들어져
+ * 핀 배열 메모이제이션이 깨지므로 상수로 둔다.
+ */
 const EMPTY_VISITED_IDS: number[] = [];
+const EMPTY_JUST_VISITED_IDS: number[] = [];
 
 export interface VisitMapHandle {
   /** 지도 중심을 내 위치로 이동 (하단 시트의 내 위치 버튼에서 호출) */
@@ -35,6 +39,8 @@ interface VisitMapProps {
   visitedPlaceIds?: number[];
   /** 다음 목적지 placeId — 이 핀만 깃발(current)로 표시 */
   currentPlaceId?: number | null;
+  /** 방금 방문된 placeId 집합 — glow 등장 애니메이션용 */
+  justVisitedIds?: number[];
   route?: LatLng[];
   routeCategory?: PlaceCategory;
   routeSegments?: MapRouteSegment[];
@@ -49,8 +55,8 @@ interface VisitMapProps {
 /**
  * 탐험 지도 (KakaoMap 래퍼).
  * 내 위치로 이동은 ref(panToMyLocation)로 노출 — 버튼은 하단 시트가 갖는다.
- * 핀 번호는 "남은 순서"(방문 완료 제외, 다음 목적지=1)로 재매김 —
- * 코스 타임라인의 취소선·재번호 규칙과 동일하게 맞춘다.
+ * 핀 번호는 방문 여부와 상관없이 코스 전체 기준 고정 순번(1, 2, 3…)이다 —
+ * 코스 타임라인의 번호 규칙과 동일하다.
  */
 const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
   (
@@ -60,6 +66,7 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
       myLocation,
       visitedPlaceIds = EMPTY_VISITED_IDS,
       currentPlaceId,
+      justVisitedIds = EMPTY_JUST_VISITED_IDS,
       route,
       routeCategory,
       routeSegments,
@@ -78,16 +85,14 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
     // 핀 배열이 매번 새로 만들어지면 지도가 겹침 묶음을 그때마다 다시 계산하므로,
     // 핀이 실제로 바뀌는 경우(장소·방문·다음 목적지·팀원 위치)에만 만든다.
     const allMarkers = useMemo<MapMarker[]>(() => {
-      // 미방문 장소만 visitOrder 순으로 모아 "남은 순서" 1,2,3…을 매긴다.
-      // 방문 완료 장소는 번호 없이 체크만 표시되므로 여기서 제외.
-      const remainingOrder = new Map<number, number>();
+      // 전체 코스 기준으로 절대 순번 1, 2, 3... 을 매긴다.
+      const absoluteOrder = new Map<number, number>();
       [...places]
-        .filter((place) => !visitedPlaceIds.includes(place.placeId))
         .sort(
           (a, b) => a.dayNumber - b.dayNumber || a.visitOrder - b.visitOrder,
         )
         .forEach((place, index) => {
-          remainingOrder.set(place.placeId, index + 1);
+          absoluteOrder.set(place.placeId, index + 1);
         });
 
       const placeMarkers: MapMarker[] = places.map((place) => {
@@ -95,10 +100,11 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
         return {
           id: String(place.placeId),
           position: { lat: place.latitude, lng: place.longitude },
-          // 남은 순서 (방문한 곳은 undefined → MapPin이 체크만 그림)
-          order: remainingOrder.get(place.placeId),
+          // 고정된 전체 순번을 사용
+          order: absoluteOrder.get(place.placeId),
           visited: isVisited,
-          // 방문 안 했고 + 다음 목적지인 핀만 깃발 (항상 남은 순서 1번)
+          justVisited: justVisitedIds.includes(place.placeId),
+          // 방문 안 했고 + 다음 목적지인 핀만 깃발
           isCurrent: !isVisited && place.placeId === currentPlaceId,
           category: place.travelMbtiType,
         };
@@ -111,17 +117,8 @@ const VisitMap = forwardRef<VisitMapHandle, VisitMapProps>(
         label: t.displayName,
       }));
 
-      const displayMarkers = destinationMarker
-        ? [
-            ...placeMarkers.filter(
-              (marker) => marker.id !== destinationMarker.id,
-            ),
-            destinationMarker,
-          ]
-        : placeMarkers;
-
-      return [...displayMarkers, ...memberMarkers];
-    }, [places, visitedPlaceIds, currentPlaceId, teammates, destinationMarker]);
+      return [...placeMarkers, ...memberMarkers];
+    }, [places, visitedPlaceIds, currentPlaceId, justVisitedIds, teammates]);
 
     const handleMarkerClick = useCallback(
       (markerId: string): void => {
