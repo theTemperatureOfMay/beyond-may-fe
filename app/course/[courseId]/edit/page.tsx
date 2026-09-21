@@ -189,6 +189,7 @@ const CourseEditor = ({
   const saveMutation = useMutation({
     mutationFn: () =>
       putCoursePlaces(String(course.courseId), {
+        title: title.trim(),
         places: toPlacesPayload(places),
       }),
     onSuccess: handleSaveSuccess,
