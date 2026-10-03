@@ -14,6 +14,8 @@ interface DuplicateExplorationStateProps {
   activeExplorationId: number;
   /** "나가고 새 지도 참여하기" 성공 시 — 부모가 새 코스 join을 재시도 */
   onLeaveSuccess: () => void;
+  /** 중복 탐험을 해결한 뒤 이어갈 작업 */
+  purpose?: "join" | "confirm";
 }
 
 /**
@@ -24,6 +26,7 @@ interface DuplicateExplorationStateProps {
 const DuplicateExplorationState = ({
   activeExplorationId,
   onLeaveSuccess,
+  purpose = "join",
 }: DuplicateExplorationStateProps) => {
   const router = useRouter();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -33,6 +36,7 @@ const DuplicateExplorationState = ({
     String(activeExplorationId),
   );
   const { mutate: leave, isPending: isLeaving } = useLeaveExplorationMutation();
+  const isConfirmPurpose = purpose === "confirm";
 
   const handleGoToExisting = (): void => {
     if (!activeStatus) return;
@@ -60,13 +64,28 @@ const DuplicateExplorationState = ({
     <>
       <Modal open={!isConfirmOpen} onClose={() => {}}>
         <h2 className="text-neutral-07 text-[20px] font-semibold">
-          이미 참여 중인
-          <br />
-          지도가 있어요.
+          {isConfirmPurpose ? (
+            <>
+              기존 지도를 나가고
+              <br />이 코스를 확정할까요?
+            </>
+          ) : (
+            <>
+              이미 참여 중인
+              <br />
+              지도가 있어요.
+            </>
+          )}
         </h2>
         <p className="text-neutral-04 mt-2 text-[13px] leading-[1.55]">
-          한 번에 하나의 지도에만 참여할 수 있어요.
-          <br />새 지도에 참여하려면 먼저 기존 지도에서 나가야 해요.
+          {isConfirmPurpose ? (
+            "새 코스를 확정하려면 먼저 기존 지도에서 나가야 해요."
+          ) : (
+            <>
+              한 번에 하나의 지도에만 참여할 수 있어요.
+              <br />새 지도에 참여하려면 먼저 기존 지도에서 나가야 해요.
+            </>
+          )}
         </p>
         <div className="mt-5 flex flex-col gap-2">
           <Button
@@ -83,14 +102,18 @@ const DuplicateExplorationState = ({
             className="w-full"
             onClick={() => setIsConfirmOpen(true)}
           >
-            나가고 새 지도 참여하기
+            {isConfirmPurpose
+              ? "나가고 코스 확정하기"
+              : "나가고 새 지도 참여하기"}
           </Button>
         </div>
       </Modal>
 
       <Modal open={isConfirmOpen} onClose={() => setIsConfirmOpen(false)}>
         <h2 className="text-neutral-07 text-[20px] font-semibold">
-          기존 지도에서 나갈까요?
+          {isConfirmPurpose
+            ? "기존 지도를 나가고 코스를 확정할까요?"
+            : "기존 지도에서 나갈까요?"}
         </h2>
         <p className="text-neutral-04 mt-2 text-[13px] leading-[1.55]">
           지금까지 밝힌 기록은 그대로 보관돼요.

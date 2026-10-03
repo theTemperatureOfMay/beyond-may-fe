@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PreferenceQuestion } from "@/types/preference";
 
+import Modal from "@/components/ui/Modal";
 import { useGetPreferenceQuestionsQuery } from "@/features/onboarding/hooks/useGetPreferenceQuestionsQuery";
 import { useQuiz } from "@/features/onboarding/hooks/useQuiz";
 import { computePreference } from "@/features/onboarding/utils/computePreference";
+import {
+  clearQuizDraft,
+  readQuizDraft,
+  restoreQuestionOrder,
+  writeQuizDraft,
+} from "@/features/onboarding/utils/quizDraft";
 import { smoothScrollTo } from "@/features/onboarding/utils/smoothScrollTo";
 import useSessionStore from "@/stores/sessionStore";
 import AppHeader from "@/components/layout/AppHeader";
@@ -21,7 +28,8 @@ import LoadingRing from "@/components/ui/LoadingRing";
  * 성향 검사 온보딩 페이지 (기능명세 1.1.2 / 1.2.1).
  *
  * 흐름:
- * 0. 백엔드가 전체 문항을 내려주면 그중 SERVED_QUESTION_COUNT(7)개를 랜덤 선별해 진행한다.
+ * 0. 백엔드가 전체 문항을 내려주면 순서를 섞고, 최초 SERVED_QUESTION_COUNT(7)개를 진행한다.
+ *    최고 점수 동점 시 남은 문항을 하나씩 추가한다.
  * 1. 질문 로딩 중 → 로딩(인트로) 화면만 노출
  * 2. 질문 도착 → 질문 스크롤 컨테이너로 전환 (로딩 화면은 DOM에서 제거) → 로딩으로 되돌아갈 수 없음
  * 3. 질문끼리는 scroll-snap으로 진행.
@@ -30,38 +38,53 @@ import LoadingRing from "@/components/ui/LoadingRing";
 
 const SERVED_QUESTION_COUNT = 7;
 
-const pickRandomQuestions = (
-  all: PreferenceQuestion[],
-  count: number,
-): PreferenceQuestion[] => {
+const shuffleQuestions = (all: PreferenceQuestion[]): PreferenceQuestion[] => {
   const shuffled = [...all];
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return shuffled.slice(0, count);
+  return shuffled;
 };
 
 const OnboardingPage = () => {
   const router = useRouter();
+  const [savedDraft] = useState(readQuizDraft);
+  const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(
+    savedDraft !== null,
+  );
 
   const { data, isLoading, isError, refetch } =
     useGetPreferenceQuestionsQuery();
 
   const questions = useMemo(
-    () => pickRandomQuestions(data?.questions ?? [], SERVED_QUESTION_COUNT),
-    [data?.questions],
+    () =>
+      savedDraft
+        ? restoreQuestionOrder(data?.questions ?? [], savedDraft.questionIds)
+        : shuffleQuestions(data?.questions ?? []),
+    [data?.questions, savedDraft],
   );
-  const isReady = !isLoading && !isError && questions.length > 0;
+  const hasInvalidQuestionData =
+    !isLoading && !isError && questions.length < SERVED_QUESTION_COUNT;
+  const isReady = !isLoading && !isError && !hasInvalidQuestionData;
 
   const {
     answers,
+    activeQuestionCount,
     visibleQuestions,
     progress,
     isCompleted,
     getSelectedOption,
     selectAnswer,
-  } = useQuiz({ questions });
+    reset,
+  } = useQuiz({
+    questions,
+    initialQuestionCount:
+      savedDraft?.activeQuestionCount ?? SERVED_QUESTION_COUNT,
+    initialAnswers: savedDraft?.answers,
+  });
+
+  const hasHydratedDraft = useRef(false);
 
   const setLocalPreference = useSessionStore(
     (state) => state.setLocalPreference,
@@ -77,6 +100,22 @@ const OnboardingPage = () => {
   const cancelScrollRef = useRef<(() => void) | null>(null);
 
   useEffect(() => () => cancelScrollRef.current?.(), []);
+
+  useEffect(() => {
+    if (!isReady) return;
+    if (!hasHydratedDraft.current) {
+      hasHydratedDraft.current = true;
+      return;
+    }
+    if (answers.length === 0) return;
+
+    writeQuizDraft({
+      answers,
+      activeQuestionCount,
+      questionIds: questions.map((question) => question.questionId),
+      savedAt: Date.now(),
+    });
+  }, [activeQuestionCount, answers, isReady, questions]);
 
   const handleSelect = (questionId: number, optionId: number): void => {
     const isNewAnswer = getSelectedOption(questionId) === null;
@@ -110,6 +149,7 @@ const OnboardingPage = () => {
   useEffect(() => {
     if (!isCompleted) return;
 
+    clearQuizDraft();
     const computed = computePreference(questions, answers);
     setLocalPreference(computed);
 
@@ -138,6 +178,12 @@ const OnboardingPage = () => {
     router,
   ]);
 
+  const handleStartFresh = (): void => {
+    clearQuizDraft();
+    reset(SERVED_QUESTION_COUNT);
+    setIsResumeDialogOpen(false);
+  };
+
   // 로딩/에러 상태: 질문 준비 전에는 인트로(로딩) 화면만 출력.
   if (!isReady) {
     return (
@@ -145,7 +191,7 @@ const OnboardingPage = () => {
         {/* 로딩·에러 화면에는 상단 헤더 노출 (질문 화면에는 없음) */}
         <AppHeader className="text-neutral-04" />
 
-        {isError ? (
+        {isError || hasInvalidQuestionData ? (
           <section className="flex flex-1 flex-col items-center justify-center px-8 text-center">
             <p className="text-neutral-07 text-[20px] font-semibold">
               질문을 불러오지 못했어요.
@@ -208,6 +254,21 @@ const OnboardingPage = () => {
           />
         </div>
       ))}
+
+      <Modal open={isResumeDialogOpen} onClose={() => {}}>
+        <h2 className="text-neutral-07 text-center text-lg font-semibold">
+          작성 중이던 답변이 있어요
+        </h2>
+        <p className="text-neutral-04 mt-3 text-center text-sm leading-6">
+          이전에 진행하던 성향 검사를 이어서 할까요?
+        </p>
+        <div className="mt-5 flex flex-col gap-3">
+          <Button variant="solid" onClick={() => setIsResumeDialogOpen(false)}>
+            이어서 하기
+          </Button>
+          <Button onClick={handleStartFresh}>새로 시작</Button>
+        </div>
+      </Modal>
     </main>
   );
 };

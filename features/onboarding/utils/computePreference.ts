@@ -48,3 +48,19 @@ export const computePreference = (
     remembererScore: remember,
   };
 };
+
+export const hasPreferenceTie = (
+  preference: Pick<
+    MyPreferenceResponse,
+    "thinkerScore" | "foodieScore" | "artistScore" | "remembererScore"
+  >,
+): boolean => {
+  const scores = [
+    preference.thinkerScore,
+    preference.foodieScore,
+    preference.artistScore,
+    preference.remembererScore,
+  ];
+  const highestScore = Math.max(...scores);
+  return scores.filter((score) => score === highestScore).length > 1;
+};

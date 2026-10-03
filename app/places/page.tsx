@@ -36,6 +36,8 @@ import type {
   RecommendationBatch,
   RecommendationPlace,
   RecommendationResponse,
+  ReplaceBatchReactionsRequest,
+  ReplaceBatchReactionsResponse,
 } from "@/types/recommendation";
 
 type PlacesStep = "period" | "recommendations" | "guide" | "deck";
@@ -44,6 +46,15 @@ type DetailSource = "deck" | "selection";
 interface PlacesDraft extends TravelPeriod {
   swipedPlaceIds: number[];
   likedPlaceIds: number[];
+}
+
+interface FailedBatchReaction {
+  batch: RecommendationBatch;
+  liked: Set<number>;
+  variables: {
+    batchNumber: number;
+    body: ReplaceBatchReactionsRequest;
+  };
 }
 
 const DRAFT_KEY = "beyond-may-place-draft";
@@ -122,16 +133,22 @@ export default function PlacesPage() {
   const [batchLikedIds, setBatchLikedIds] = useState<Set<number>>(new Set());
   /** 이미 제출된 회차에서 좋아요한 장소 (누적) */
   const [likedPlaces, setLikedPlaces] = useState<RecommendationPlace[]>([]);
+  /** 실패한 회차 반응과 원래 요청을 그대로 재시도하기 위한 상태 */
+  const [failedBatchReaction, setFailedBatchReaction] =
+    useState<FailedBatchReaction | null>(null);
 
   const [hasLoadingMinimumElapsed, setHasLoadingMinimumElapsed] =
     useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const recommendationAbortController = useRef<AbortController | null>(null);
+  const recommendationRequestId = useRef(0);
   const generationCancelled = useRef(false);
 
   const { data: existingRecommendation, refetch: refetchRecommendation } =
     useGetCurrentRecommendationQuery();
   const {
     mutate: createRecommendationSet,
+    reset: resetRecommendationSet,
     isPending: isCreatingRecommendation,
     isError: isCreateRecommendationError,
   } = useCreateRecommendationSetMutation();
@@ -169,7 +186,9 @@ export default function PlacesPage() {
   const maximumPlaceCount = getMaximumPlaceCount(travelSchedule);
   const isLikeBlocked = allLikedPlaces.length >= maximumPlaceCount;
   const isRecommendationError =
-    isCreateRecommendationError || isBatchReactionsError;
+    isCreateRecommendationError ||
+    isBatchReactionsError ||
+    !!failedBatchReaction;
 
   useEffect(() => {
     localStorage.setItem(
@@ -248,6 +267,9 @@ export default function PlacesPage() {
   };
 
   const handleLoadRecommendations = (): void => {
+    recommendationAbortController.current?.abort();
+    const requestId = ++recommendationRequestId.current;
+    setFailedBatchReaction(null);
     setHasLoadingMinimumElapsed(false);
     setLoadingMessageIndex(0);
     setStep("recommendations");
@@ -269,10 +291,24 @@ export default function PlacesPage() {
       return;
     }
 
+    const abortController = new AbortController();
+    recommendationAbortController.current = abortController;
     createRecommendationSet(
-      { travelSchedule, startDate, endDate },
+      {
+        body: { travelSchedule, startDate, endDate },
+        signal: abortController.signal,
+      },
       {
         onSuccess: (data) => {
+          if (
+            requestId !== recommendationRequestId.current ||
+            abortController.signal.aborted
+          ) {
+            return;
+          }
+          if (recommendationAbortController.current === abortController) {
+            recommendationAbortController.current = null;
+          }
           setRecommendationId(data.recommendationId);
           setServerMinimum(data.minimumSelectionCount);
           setLikedPlaces([]);
@@ -283,12 +319,27 @@ export default function PlacesPage() {
           if (data.batch.completed) {
             // 같은 일정으로 이미 끝까지 진행한 세트 — 최신 진행 상태를 다시 받아온다
             void refetchRecommendation().then(({ data: refreshed }) => {
+              if (
+                requestId !== recommendationRequestId.current ||
+                abortController.signal.aborted
+              ) {
+                return;
+              }
               if (refreshed) resumeFromRecommendation(refreshed);
             });
             return;
           }
           setIsDeckComplete(false);
           setCurrentBatch(data.batch);
+        },
+        onError: () => {
+          if (
+            requestId === recommendationRequestId.current &&
+            !abortController.signal.aborted &&
+            recommendationAbortController.current === abortController
+          ) {
+            recommendationAbortController.current = null;
+          }
         },
       },
     );
@@ -309,6 +360,10 @@ export default function PlacesPage() {
   };
 
   const handleCancelRecommendations = (): void => {
+    recommendationRequestId.current += 1;
+    recommendationAbortController.current?.abort();
+    recommendationAbortController.current = null;
+    resetRecommendationSet();
     setStep("period");
   };
 
@@ -316,6 +371,28 @@ export default function PlacesPage() {
     localStorage.setItem(GUIDE_KEY, "true");
     setHasSeenGuide(true);
     setStep("deck");
+  };
+
+  const applyBatchReactionSuccess = (
+    batch: RecommendationBatch,
+    liked: Set<number>,
+    response: ReplaceBatchReactionsResponse,
+  ): void => {
+    setFailedBatchReaction(null);
+    setLikedPlaces((prev) => [
+      ...prev,
+      ...batch.places.filter((place) => liked.has(place.placeId)),
+    ]);
+    setServerMinimum(response.minimumSelectionCount);
+    setSelectionReady(response.selectionReady);
+    setBatchSwipedIds([]);
+    setBatchLikedIds(new Set());
+    if (response.hasNextBatch && response.nextBatch) {
+      setCurrentBatch(response.nextBatch);
+    } else {
+      setCurrentBatch(null);
+      setIsDeckComplete(true);
+    }
   };
 
   const submitBatch = (
@@ -327,31 +404,34 @@ export default function PlacesPage() {
     const dislikedPlaceIds = batch.places
       .map((place) => place.placeId)
       .filter((placeId) => !liked.has(placeId));
+    const variables = {
+      batchNumber: batch.batchNumber,
+      body: { likedPlaceIds, dislikedPlaceIds },
+    };
 
-    replaceBatchReactions(
-      {
-        batchNumber: batch.batchNumber,
-        body: { likedPlaceIds, dislikedPlaceIds },
-      },
-      {
-        onSuccess: (response) => {
-          setLikedPlaces((prev) => [
-            ...prev,
-            ...batch.places.filter((place) => liked.has(place.placeId)),
-          ]);
-          setServerMinimum(response.minimumSelectionCount);
-          setSelectionReady(response.selectionReady);
-          setBatchSwipedIds([]);
-          setBatchLikedIds(new Set());
-          if (response.hasNextBatch && response.nextBatch) {
-            setCurrentBatch(response.nextBatch);
-          } else {
-            setCurrentBatch(null);
-            setIsDeckComplete(true);
-          }
-        },
-      },
-    );
+    replaceBatchReactions(variables, {
+      onSuccess: (response) =>
+        applyBatchReactionSuccess(batch, liked, response),
+      onError: () => setFailedBatchReaction({ batch, liked, variables }),
+    });
+  };
+
+  const retryFailedBatchReaction = (): void => {
+    if (!failedBatchReaction) return;
+    const { batch, liked, variables } = failedBatchReaction;
+    replaceBatchReactions(variables, {
+      onSuccess: (response) =>
+        applyBatchReactionSuccess(batch, liked, response),
+      onError: () => setFailedBatchReaction(failedBatchReaction),
+    });
+  };
+
+  const handleRetryRecommendations = (): void => {
+    if (failedBatchReaction) {
+      retryFailedBatchReaction();
+      return;
+    }
+    handleLoadRecommendations();
   };
 
   const handleSwipe = (direction: "like" | "dislike"): void => {
@@ -546,7 +626,7 @@ export default function PlacesPage() {
                   variant="solid"
                   size="lg"
                   className="mt-5 w-full"
-                  onClick={handleLoadRecommendations}
+                  onClick={handleRetryRecommendations}
                 >
                   장소 다시 불러오기
                 </Button>

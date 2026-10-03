@@ -74,6 +74,31 @@ it("로그인 성공 시 메뉴를 닫고 로그인 후에는 다시 열 수 있
   expect(screen.getByText("로그인한 사용자")).toBeInTheDocument();
 });
 
+it("로그인 성공 시 이전 성향 결과를 초기화한다", async () => {
+  useSessionStore.getState().setPreferenceType("ARTIST");
+  useSessionStore.getState().setLocalPreference({
+    userId: 1,
+    nickname: "이전 사용자",
+    preferenceType: "ARTIST",
+    thinkerScore: 1,
+    foodieScore: 2,
+    artistScore: 3,
+    remembererScore: 4,
+  });
+  vi.mocked(postLogin).mockResolvedValue({
+    userId: 1,
+    nickname: "테스트",
+    token: "test-token",
+  });
+
+  await submitLogin();
+
+  await waitFor(() => {
+    expect(useSessionStore.getState().preferenceType).toBeNull();
+    expect(useSessionStore.getState().localPreference).toBeNull();
+  });
+});
+
 it("로그인 실패 시 메뉴와 입력 폼을 유지한다", async () => {
   vi.mocked(postLogin).mockRejectedValue(new Error("로그인 실패"));
   await submitLogin();

@@ -7,6 +7,11 @@ import type {
   CreateRecommendationSetResponse,
 } from "@/types/recommendation";
 
+interface CreateRecommendationSetVariables {
+  body: CreateRecommendationSetRequest;
+  signal?: AbortSignal;
+}
+
 /**
  * 추천 세트 생성 (POST /recommendations/sets).
  * 같은 일정으로 이미 만들어진 세트가 있으면 그 진행 상태를 그대로 반환한다.
@@ -17,9 +22,9 @@ const useCreateRecommendationSetMutation = () => {
   return useMutation<
     CreateRecommendationSetResponse,
     Error,
-    CreateRecommendationSetRequest
+    CreateRecommendationSetVariables
   >({
-    mutationFn: postRecommendationSet,
+    mutationFn: ({ body, signal }) => postRecommendationSet(body, signal),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.RECOMMENDATION.CURRENT(),

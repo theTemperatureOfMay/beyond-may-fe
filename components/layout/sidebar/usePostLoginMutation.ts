@@ -7,6 +7,9 @@ import useAccountStore from "@/stores/accountStore";
 export const usePostLoginMutation = () => {
   const queryClient = useQueryClient();
   const setSession = useSessionStore((state) => state.setSession);
+  const clearPreferenceType = useSessionStore(
+    (state) => state.clearPreferenceType,
+  );
   const markHasAccount = useAccountStore((state) => state.markHasAccount);
 
   return useMutation({
@@ -14,6 +17,7 @@ export const usePostLoginMutation = () => {
     onSuccess: (data, variables) => {
       localStorage.setItem("accessToken", data.token);
       queryClient.clear();
+      clearPreferenceType();
       setSession(data.nickname, variables.identificationCode);
       markHasAccount();
     },
